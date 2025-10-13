@@ -1,6 +1,6 @@
 module GoSearch
 
-go 1.24
+go 1.24.0
 
 require github.com/gorilla/mux v1.8.1
 
@@ -13,7 +13,7 @@ require (
 	github.com/prometheus/client_golang v1.22.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	golang.org/x/crypto v0.38.0
-	golang.org/x/text v0.25.0
+	golang.org/x/text v0.30.0
 )
 
 require (
