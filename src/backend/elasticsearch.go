@@ -126,5 +126,8 @@ func initElasticsearch() {
 		time.Sleep(retryDelay)
 	}
 
-	log.Fatalf("Failed to connect to Elasticsearch after %d attempts", maxRetries)
+	// Changed from log.Fatalf to log.Printf - allows app to continue
+	log.Printf("Warning: Failed to connect to Elasticsearch after %d attempts", maxRetries)
+	log.Println("Application will continue with PostgreSQL search fallback")
+	esClient = nil // Ensure esClient is nil so fallback is used
 }

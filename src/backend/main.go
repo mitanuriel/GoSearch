@@ -54,7 +54,8 @@ func main() {
 	initElasticsearch()
 
 	if err := syncPagesToElasticsearch(); err != nil {
-		log.Fatalf("Failed to sync pages: %v", err)
+		log.Printf("Warning: Failed to sync pages to Elasticsearch: %v", err)
+		log.Println("Continuing without Elasticsearch - search will use PostgreSQL fallback")
 	}
 
 	logPath := os.Getenv("SEARCH_LOG_PATH")
