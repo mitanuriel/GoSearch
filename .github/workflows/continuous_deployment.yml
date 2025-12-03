@@ -35,7 +35,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ghcr.io/devoops23b/gosearch:latest
+          tags: ghcr.io/mitanuriel/gosearch:latest
 
   deploy:
     runs-on: ubuntu-latest
