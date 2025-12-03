@@ -20,7 +20,7 @@ FROM alpine:3.21.3
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
-RUN apk add --no-cache nodejs=22.13.1-r0 npm=10.9.1-r0 postgresql15-client=15.13-r0
+RUN apk add --no-cache nodejs npm postgresql15-client
 
 RUN addgroup -S nonroot \
     && adduser -S nonroot -G nonroot
