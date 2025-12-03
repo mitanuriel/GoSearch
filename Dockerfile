@@ -20,7 +20,9 @@ FROM alpine:3.21.3
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
-RUN apk add --no-cache nodejs npm postgresql15-client
+# Install Node.js, npm, and PostgreSQL client
+# Using 'latest' versions available in Alpine repos to avoid version conflicts
+RUN apk add --no-cache nodejs~22 npm~10 postgresql15-client
 
 RUN addgroup -S nonroot \
     && adduser -S nonroot -G nonroot
