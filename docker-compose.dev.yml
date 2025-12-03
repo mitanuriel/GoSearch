@@ -13,11 +13,13 @@ services:
       - CONN_STR=${CONN_STR}
       - APP_ENV=${APP_ENV}
       - LOG_LEVEL=${LOG_LEVEL}
-      - ES_HOST=${ES_HOST}
-      - TEMPLATE_PATH=${TEMPLATE_PATH}
-      - STATIC_PATH=${STATIC_PATH}
+      - ES_HOST=elasticsearch
+      - ES_PORT=9200
+      - TEMPLATE_PATH=/app/src/frontend/templates/
+      - STATIC_PATH=/app/src/frontend/static/
       - SESSION_SECRET=${SESSION_SECRET}
       - SEARCH_LOG_PATH=/app/src/backend/search.log
+      - SQLITE_DB_PATH=/app/src/whoknows.db
     depends_on:
       - postgres
       - elasticsearch
