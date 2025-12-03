@@ -39,3 +39,4 @@ node_modules/
 #backup
 /src/backend/backups/
 
+VM-Gosearch_key.pem
