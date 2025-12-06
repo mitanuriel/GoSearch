@@ -158,7 +158,7 @@ func monitorCPU() {
 }
 
 func certificateMonitoring() {
-	domains := []string{"gosearch.dk"}
+	domains := []string{"gosearch1.dk"}
 
 	for {
 		for _, domain := range domains {
