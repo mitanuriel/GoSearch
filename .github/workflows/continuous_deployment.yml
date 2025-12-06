@@ -110,8 +110,9 @@ jobs:
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             mkdir -p ~/GoSearch
             cd ~/GoSearch
+            docker-compose -f docker-compose.dev.yml down -v || true
             docker-compose -f docker-compose.dev.yml pull
-            docker-compose -f docker-compose.dev.yml up -d
+            docker-compose -f docker-compose.dev.yml up -d --force-recreate
             EOF
 
         - name: Clean up Docker resources
