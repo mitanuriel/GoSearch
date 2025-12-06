@@ -1,0 +1,345 @@
+{
+	"info": {
+		"name": "GoSearch API",
+		"description": "Complete API collection for GoSearch application deployed at gosearch1.dk",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Search",
+			"item": [
+				{
+					"name": "Search - GET",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://gosearch1.dk/api/search?q=algorithm",
+							"protocol": "https",
+							"host": [
+								"gosearch1",
+								"dk"
+							],
+							"path": [
+								"api",
+								"search"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "algorithm",
+									"description": "Search query"
+								}
+							]
+						},
+						"description": "Search for content using GET method with query parameter"
+					}
+				},
+				{
+					"name": "Search - POST",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"q\": \"python\"\n}"
+						},
+						"url": {
+							"raw": "https://gosearch1.dk/api/search",
+							"protocol": "https",
+							"host": [
+								"gosearch1",
+								"dk"
+							],
+							"path": [
+								"api",
+								"search"
+							]
+						},
+						"description": "Search for content using POST method with JSON body"
+					}
+				}
+			]
+		},
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"testpassword\"\n}"
+						},
+						"url": {
+							"raw": "https://gosearch1.dk/api/login",
+							"protocol": "https",
+							"host": [
+								"gosearch1",
+								"dk"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						},
+						"description": "Login with username and password"
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://gosearch1.dk/api/logout",
+							"protocol": "https",
+							"host": [
+								"gosearch1",
+								"dk"
+							],
+							"path": [
+								"api",
+								"logout"
+							]
+						},
+						"description": "Logout current user session"
+					}
+				},
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"newuser\",\n  \"email\": \"newuser@example.com\",\n  \"password\": \"securepassword123\"\n}"
+						},
+						"url": {
+							"raw": "https://gosearch1.dk/api/register",
+							"protocol": "https",
+							"host": [
+								"gosearch1",
+								"dk"
+							],
+							"path": [
+								"api",
+								"register"
+							]
+						},
+						"description": "Register a new user account"
+					}
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\"\n}"
+						},
+						"url": {
+							"raw": "https://gosearch1.dk/api/reset-password",
+							"protocol": "https",
+							"host": [
+								"gosearch1",
+								"dk"
+							],
+							"path": [
+								"api",
+								"reset-password"
+							]
+						},
+						"description": "Request password reset for an email"
+					}
+				}
+			]
+		},
+		{
+			"name": "Pages",
+			"item": [
+				{
+					"name": "Home Page",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://gosearch1.dk/",
+							"protocol": "https",
+							"host": [
+								"gosearch1",
+								"dk"
+							],
+							"path": [
+								""
+							]
+						},
+						"description": "Get the home page"
+					}
+				},
+				{
+					"name": "About Page",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://gosearch1.dk/about",
+							"protocol": "https",
+							"host": [
+								"gosearch1",
+								"dk"
+							],
+							"path": [
+								"about"
+							]
+						},
+						"description": "Get the about page"
+					}
+				},
+				{
+					"name": "Login Page",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://gosearch1.dk/login",
+							"protocol": "https",
+							"host": [
+								"gosearch1",
+								"dk"
+							],
+							"path": [
+								"login"
+							]
+						},
+						"description": "Get the login page"
+					}
+				},
+				{
+					"name": "Register Page",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://gosearch1.dk/register",
+							"protocol": "https",
+							"host": [
+								"gosearch1",
+								"dk"
+							],
+							"path": [
+								"register"
+							]
+						},
+						"description": "Get the registration page"
+					}
+				},
+				{
+					"name": "Search Page",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://gosearch1.dk/search",
+							"protocol": "https",
+							"host": [
+								"gosearch1",
+								"dk"
+							],
+							"path": [
+								"search"
+							]
+						},
+						"description": "Get the search page"
+					}
+				},
+				{
+					"name": "Reset Password Page",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://gosearch1.dk/reset-password",
+							"protocol": "https",
+							"host": [
+								"gosearch1",
+								"dk"
+							],
+							"path": [
+								"reset-password"
+							]
+						},
+						"description": "Get the password reset page"
+					}
+				}
+			]
+		},
+		{
+			"name": "Other",
+			"item": [
+				{
+					"name": "Weather",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://gosearch1.dk/api/weather",
+							"protocol": "https",
+							"host": [
+								"gosearch1",
+								"dk"
+							],
+							"path": [
+								"api",
+								"weather"
+							]
+						},
+						"description": "Get weather information"
+					}
+				},
+				{
+					"name": "Prometheus Metrics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://gosearch1.dk/metrics",
+							"protocol": "https",
+							"host": [
+								"gosearch1",
+								"dk"
+							],
+							"path": [
+								"metrics"
+							]
+						},
+						"description": "Get Prometheus metrics for monitoring"
+					}
+				}
+			]
+		}
+	]
+}
