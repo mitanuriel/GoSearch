@@ -2,7 +2,7 @@ name: Add new feature
 description: "Create an issue for a new feature"
 title: "[feature]: "
 labels: "feature"
-projects: ["DevOops23b WhoKnows Kanban"]
+projects: ["mitanuriel/GoSearch"]
 body:
 - type: checkboxes
   id: type-of-feature

@@ -5,12 +5,12 @@ on:
     branches:
       - main
       - develop
-      - Develop
+      
   pull_request:
     branches:
       - main
       - develop
-      - Develop
+      
   workflow_dispatch:    
 
 jobs:
@@ -110,3 +110,57 @@ jobs:
           version: latest
           working-directory: ./src/backend
           args: --timeout=5m
+
+  sonarcloud:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+        ports:
+          - 9200:9200
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: false
+        options: >-
+          --health-cmd="curl -f http://localhost:9200/_cluster/health || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for better analysis
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
+      
+      - name: Set environment variables
+        run: |
+          echo "ES_HOST=localhost" >> $GITHUB_ENV
+          echo "ES_USERNAME=elastic" >> $GITHUB_ENV
+          echo "ES_PASSWORD=changeme" >> $GITHUB_ENV
+          echo "DB_HOST=localhost" >> $GITHUB_ENV
+          echo "DB_PORT=5432" >> $GITHUB_ENV
+          echo "DB_USER=testuser" >> $GITHUB_ENV
+          echo "DB_PASSWORD=testpassword" >> $GITHUB_ENV
+          echo "DB_NAME=testdb" >> $GITHUB_ENV
+          echo "SESSION_SECRET=$(openssl rand -hex 32)" >> $GITHUB_ENV
+      
+      - name: Run tests with coverage
+        working-directory: ./src/backend
+        run: |
+          go test -v -coverprofile=coverage.out -covermode=atomic ./...
+        continue-on-error: true
+      
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v2.3.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

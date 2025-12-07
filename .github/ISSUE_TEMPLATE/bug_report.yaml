@@ -2,7 +2,7 @@ name: Bug Report
 description: "Create an issue for a bug"
 title: "[bug]: "
 labels: "bug"
-projects: ["DevOops23b WhoKnows Kanban"]
+projects: ["mitanuriel/GoSearch"]
 body:
 - type: checkboxes
   id: bug-severity
