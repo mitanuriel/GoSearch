@@ -5,12 +5,12 @@ on:
     branches:
       - main
       - develop
-      - Develop
+      
   pull_request:
     branches:
       - main
       - develop
-      - Develop
+      
   workflow_dispatch:    
 
 jobs:
@@ -110,3 +110,38 @@ jobs:
           version: latest
           working-directory: ./src/backend
           args: --timeout=5m
+
+  sonarcloud:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for better analysis
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
+      
+      - name: Run tests with coverage
+        working-directory: ./src/backend
+        run: |
+          go test -v -coverprofile=coverage.out -covermode=atomic ./...
+      
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=DevOops23b_GoSearch
+            -Dsonar.organization=devoops23b
+            -Dsonar.sources=src/backend
+            -Dsonar.tests=src/backend
+            -Dsonar.test.inclusions=**/*_test.go
+            -Dsonar.go.coverage.reportPaths=src/backend/coverage.out
+            -Dsonar.exclusions=**/*_test.go,**/vendor/**
