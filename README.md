@@ -1,4 +1,4 @@
-[![Go CI](https://github.com/DevOops23b/GoSearch/actions/workflows/actions.yml/badge.svg?branch)](https://github.com/DevOops23b/GoSearch/actions/workflows/actions.yml)
+[![Go CI](https://github.com/mitanuriel/GoSearch/actions/workflows/actions.yml/badge.svg?branch)](https://github.com/mitanuriel/GoSearch/actions/workflows/actions.yml)
 
 
 ## Run program when in backend directory:
