@@ -1,0 +1,47 @@
+# CodeRabbit AI Configuration
+# Visit https://github.com/marketplace/coderabbitai to install the app
+
+language: en-US
+early_access: false
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  path_filters:
+    - "!**/*.md"
+    - "!**/*.json"
+    - "!documentation/**"
+  path_instructions:
+    - path: "src/backend/**/*.go"
+      instructions: |
+        Review Go code for:
+        - Security vulnerabilities
+        - Performance issues
+        - Error handling
+        - Best practices
+        - Resource leaks
+    - path: "**/*.yml"
+      instructions: |
+        Review GitHub Actions workflows for:
+        - Security (secrets handling)
+        - Efficiency
+        - Best practices
+    - path: "Dockerfile"
+      instructions: |
+        Review Docker configuration for:
+        - Security (minimal base images, non-root users)
+        - Image size optimization
+        - Best practices
+    - path: "docker-compose*.yml"
+      instructions: |
+        Review Docker Compose for:
+        - Service configuration
+        - Volume management
+        - Network security
+        - Resource limits
+
+chat:
+  auto_reply: true

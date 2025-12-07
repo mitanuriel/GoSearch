@@ -1,0 +1,24 @@
+# CodeRabbit AI Code Review
+# Note: CodeRabbit is a GitHub App that needs to be installed from GitHub Marketplace
+# Visit: https://github.com/marketplace/coderabbitai
+# After installation, it will automatically review PRs without needing a workflow file
+# This file serves as documentation of the configuration
+
+name: CodeRabbit Configuration
+
+# CodeRabbit works as a GitHub App and doesn't require a workflow
+# Configuration is managed through .coderabbit.yaml in the repo root
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: CodeRabbit Info
+        run: |
+          echo "CodeRabbit is configured as a GitHub App"
+          echo "Install it from: https://github.com/marketplace/coderabbitai"
+          echo "Configuration file: .coderabbit.yaml"
