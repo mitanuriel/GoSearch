@@ -1,3 +1,8 @@
+//go:build integration
+// +build integration
+
+// Integration tests that require external dependencies (Elasticsearch, DB)
+// Run with: go test -tags=integration ./src/backend/...
 package main
 
 import (
@@ -11,28 +16,8 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 )
-
-// setupRouter duplicates main() route setup for testing.
-func setupRouter() http.Handler {
-
-	if esClient == nil {
-		initElasticsearch()
-	}
-
-	r := mux.NewRouter()
-	r.HandleFunc("/", rootHandler).Methods("GET")
-	r.HandleFunc("/about", aboutHandler).Methods("GET")
-	r.HandleFunc("/api/weather", weatherHandler).Methods("GET")
-	r.HandleFunc("/api/search", searchHandler).Methods("GET")
-	r.HandleFunc("/api/login", apiLogin).Methods("POST")
-	r.HandleFunc("/api/register", apiRegisterHandler).Methods("POST")
-	r.HandleFunc("/reset-password", resetPasswordHandler).Methods("GET")
-	r.HandleFunc("/api/reset-password", apiResetPasswordHandler).Methods("POST")
-	return r
-}
 
 // setupTestDB initializes an in-memory SQLite DB and schema
 func setupTestDB(t *testing.T) {
