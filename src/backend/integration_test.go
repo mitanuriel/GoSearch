@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	// Import SQLite driver for database/sql - registers driver via init()
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/gorilla/sessions"
