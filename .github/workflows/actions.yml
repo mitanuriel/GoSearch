@@ -147,3 +147,5 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Only enforce quality gate on main branch (free plan limitation)
+        continue-on-error: ${{ github.ref != 'refs/heads/main' }}
