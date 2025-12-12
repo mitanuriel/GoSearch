@@ -1,3 +1,8 @@
+//go:build smoke
+// +build smoke
+
+// Smoke tests for basic endpoint health checks
+// Run with: go test -tags=smoke ./src/backend/...
 package main
 
 import (

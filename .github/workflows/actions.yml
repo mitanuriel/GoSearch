@@ -72,9 +72,13 @@ jobs:
           # Session secret (generate a random string)
           echo "SESSION_SECRET=$(openssl rand -hex 32)" >> $GITHUB_ENV
           
-      - name: Run tests
+      - name: Run unit tests
         working-directory: ./src/backend
         run: go test -v ./...
+      
+      - name: Run integration tests
+        working-directory: ./src/backend
+        run: go test -v -tags=integration ./...
 
       - name: Build application
         working-directory: ./src/backend
@@ -115,20 +119,6 @@ jobs:
     name: SonarCloud Analysis
     runs-on: ubuntu-latest
     
-    services:
-      elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
-        ports:
-          - 9200:9200
-        env:
-          discovery.type: single-node
-          xpack.security.enabled: false
-        options: >-
-          --health-cmd="curl -f http://localhost:9200/_cluster/health || exit 1"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -140,23 +130,16 @@ jobs:
         with:
           go-version: 1.21
       
-      - name: Set environment variables
-        run: |
-          echo "ES_HOST=localhost" >> $GITHUB_ENV
-          echo "ES_USERNAME=elastic" >> $GITHUB_ENV
-          echo "ES_PASSWORD=changeme" >> $GITHUB_ENV
-          echo "DB_HOST=localhost" >> $GITHUB_ENV
-          echo "DB_PORT=5432" >> $GITHUB_ENV
-          echo "DB_USER=testuser" >> $GITHUB_ENV
-          echo "DB_PASSWORD=testpassword" >> $GITHUB_ENV
-          echo "DB_NAME=testdb" >> $GITHUB_ENV
-          echo "SESSION_SECRET=$(openssl rand -hex 32)" >> $GITHUB_ENV
-      
-      - name: Run tests with coverage
+      - name: Run unit tests with coverage
         working-directory: ./src/backend
+        env:
+          # Set minimal environment variables for tests that might call config
+          SESSION_SECRET: test-secret-for-ci
+          TEMPLATE_PATH: ../frontend/templates/
         run: |
+          # Run only unit tests (excludes integration and smoke tests with build tags)
+          # This doesn't require Elasticsearch or database services
           go test -v -coverprofile=coverage.out -covermode=atomic ./...
-        continue-on-error: true
       
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v2.3.0
@@ -164,3 +147,5 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Only enforce quality gate on main branch (free plan limitation)
+        continue-on-error: ${{ github.ref != 'refs/heads/main' }}

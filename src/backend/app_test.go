@@ -1,3 +1,6 @@
+// Unit tests for authentication handlers
+// These tests use mocks and don't require external dependencies
+// Run with: go test ./src/backend/... (default - no build tags needed)
 package main
 
 import (
