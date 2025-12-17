@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -131,7 +132,7 @@ func TestIntegration(t *testing.T) {
 			path:   "/api/search?q=TestContent&language=en",
 			seed: func() {
 				// Skip this test if Elasticsearch is not available
-				if esHost == "" {
+				if os.Getenv("ES_HOST") == "" {
 					t.Skip("Skipping Search test: Elasticsearch not available (ES_HOST not set)")
 				}
 				if _, err := db.Exec(
