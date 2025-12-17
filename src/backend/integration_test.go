@@ -130,6 +130,10 @@ func TestIntegration(t *testing.T) {
 			method: http.MethodGet,
 			path:   "/api/search?q=TestContent&language=en",
 			seed: func() {
+				// Skip this test if Elasticsearch is not available
+				if esHost == "" {
+					t.Skip("Skipping Search test: Elasticsearch not available (ES_HOST not set)")
+				}
 				if _, err := db.Exec(
 					`INSERT INTO pages (title,url,language,last_updated,content) VALUES (?,?,?,?,?);`,
 					"TestTitle", "/test-url", "en", "2025-01-01", "TestContent",

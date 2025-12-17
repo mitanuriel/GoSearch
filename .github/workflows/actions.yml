@@ -115,16 +115,14 @@ jobs:
           working-directory: ./src/backend
           args: --timeout=5m
 
-  # SonarCloud Analysis - ONLY runs on main branch
-  # Limitations on SonarCloud free tier:
-  # - Automatic Analysis: No branch analysis (only main), no code coverage support
-  # - CI-based Analysis: Works on main branch only, provides coverage via sonar.go.coverage.reportPaths
-  # Strategy: Run CI-based analysis ONLY on main branch to preserve coverage and quality gate enforcement
+  # SonarCloud Analysis - Runs on main branch (push and PRs to main)
+  # Includes unit tests + integration tests (excluding ES-dependent tests)
+  # This provides more comprehensive coverage analysis
   sonarcloud:
     name: SonarCloud Analysis
     runs-on: ubuntu-latest
-    # Only run on pushes to main branch (not on feature branches or PRs)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Run on pushes to main OR pull requests targeting main
+    if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
     
     steps:
       - name: Checkout code
@@ -137,16 +135,24 @@ jobs:
         with:
           go-version: 1.21
       
-      - name: Run unit tests with coverage
+      - name: Run tests with coverage (unit + integration)
         working-directory: ./src/backend
         env:
-          # Set minimal environment variables for tests that might call config
+          # Environment variables for tests
           SESSION_SECRET: test-secret-for-ci
           TEMPLATE_PATH: ../frontend/templates/
+          # Set ES_HOST to empty to skip ES-dependent tests
+          ES_HOST: ""
         run: |
-          # Run only unit tests (excludes integration and smoke tests with build tags)
-          # This doesn't require Elasticsearch or database services
-          go test -v -coverprofile=coverage.out -covermode=atomic ./...
+          # Run unit tests
+          go test -v -coverprofile=coverage-unit.out -covermode=atomic ./...
+          
+          # Run integration tests (ES-dependent search test will be skipped due to empty ES_HOST)
+          go test -v -tags=integration -coverprofile=coverage-integration.out -covermode=atomic ./...
+          
+          # Merge coverage reports
+          echo "mode: atomic" > coverage.out
+          grep -h -v "mode: atomic" coverage-unit.out coverage-integration.out >> coverage.out || true
       
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v2.3.0
@@ -155,5 +161,4 @@ jobs:
           SONAR_HOST_URL: https://sonarcloud.io
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # Quality gate is informational - provides insights without blocking CI
-        # Free tier "Sonar way" requires 80% coverage which is too strict for current codebase
         continue-on-error: true
