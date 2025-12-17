@@ -115,37 +115,40 @@ jobs:
           working-directory: ./src/backend
           args: --timeout=5m
 
-  sonarcloud:
-    name: SonarCloud Analysis
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Shallow clones should be disabled for better analysis
-      
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.21
-      
-      - name: Run unit tests with coverage
-        working-directory: ./src/backend
-        env:
-          # Set minimal environment variables for tests that might call config
-          SESSION_SECRET: test-secret-for-ci
-          TEMPLATE_PATH: ../frontend/templates/
-        run: |
-          # Run only unit tests (excludes integration and smoke tests with build tags)
-          # This doesn't require Elasticsearch or database services
-          go test -v -coverprofile=coverage.out -covermode=atomic ./...
-      
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v2.3.0
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://sonarcloud.io
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # Only enforce quality gate on main branch (free plan limitation)
-        continue-on-error: ${{ github.ref != 'refs/heads/main' }}
+  # SonarCloud job disabled - using Automatic Analysis instead
+  # Automatic Analysis analyzes commits directly from GitHub without CI integration
+  # This should provide better branch analysis support on the free tier
+  # sonarcloud:
+  #   name: SonarCloud Analysis
+  #   runs-on: ubuntu-latest
+  #   
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0  # Shallow clones should be disabled for better analysis
+  #     
+  #     - name: Set up Go
+  #       uses: actions/setup-go@v5
+  #       with:
+  #         go-version: 1.21
+  #     
+  #     - name: Run unit tests with coverage
+  #       working-directory: ./src/backend
+  #       env:
+  #         # Set minimal environment variables for tests that might call config
+  #         SESSION_SECRET: test-secret-for-ci
+  #         TEMPLATE_PATH: ../frontend/templates/
+  #       run: |
+  #         # Run only unit tests (excludes integration and smoke tests with build tags)
+  #         # This doesn't require Elasticsearch or database services
+  #         go test -v -coverprofile=coverage.out -covermode=atomic ./...
+  #     
+  #     - name: SonarQube Scan
+  #       uses: SonarSource/sonarqube-scan-action@v2.3.0
+  #       env:
+  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  #         SONAR_HOST_URL: https://sonarcloud.io
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       # Only enforce quality gate on main branch or PRs to main (free plan limitation on branch analysis)
+  #       continue-on-error: ${{ github.ref != 'refs/heads/main' && github.base_ref != 'main' }}
