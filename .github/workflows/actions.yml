@@ -161,4 +161,5 @@ jobs:
         run: |
           sonar-scanner \
             -Dproject.settings=sonar-project.properties \
-            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.qualitygate.wait=false
