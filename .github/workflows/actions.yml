@@ -161,5 +161,4 @@ jobs:
         run: |
           sonar-scanner \
             -Dproject.settings=sonar-project.properties \
-            -Dsonar.token=$SONAR_TOKEN \
             -Dsonar.host.url=https://sonarcloud.io
