@@ -27,6 +27,9 @@ go.work
 # environment
 *.env*
 
+# SonarQube scanner properties (contains secrets)
+sonar-scanner.properties
+
 # End
 
 # Playwright

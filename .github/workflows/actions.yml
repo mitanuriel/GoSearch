@@ -115,16 +115,10 @@ jobs:
           working-directory: ./src/backend
           args: --timeout=5m
 
-  # SonarCloud Analysis - ONLY runs on main branch
-  # Limitations on SonarCloud free tier:
-  # - Automatic Analysis: No branch analysis (only main), no code coverage support
-  # - CI-based Analysis: Works on main branch only, provides coverage via sonar.go.coverage.reportPaths
-  # Strategy: Run CI-based analysis ONLY on main branch to preserve coverage and quality gate enforcement
   sonarcloud:
     name: SonarCloud Analysis
     runs-on: ubuntu-latest
-    # Only run on pushes to main branch (not on feature branches or PRs)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Run on all pushes and PRs (not just main branch)
     
     steps:
       - name: Checkout code
@@ -135,25 +129,37 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.21
+          go-version: 1.24
       
-      - name: Run unit tests with coverage
+      - name: Install GCC (needed for CGO/SQLite)
+        run: sudo apt-get update && sudo apt-get install -y gcc
+      
+      - name: Run tests with coverage
         working-directory: ./src/backend
         env:
-          # Set minimal environment variables for tests that might call config
+          CGO_ENABLED: 1
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: test
+          DB_PASSWORD: test
+          DB_NAME: test
           SESSION_SECRET: test-secret-for-ci
-          TEMPLATE_PATH: ../frontend/templates/
         run: |
-          # Run only unit tests (excludes integration and smoke tests with build tags)
-          # This doesn't require Elasticsearch or database services
-          go test -v -coverprofile=coverage.out -covermode=atomic ./...
+          # Run unit tests (no external dependencies required)
+          go test -tags=unit -coverprofile=coverage.out -covermode=atomic ./...
       
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v2.3.0
+      - name: Install SonarQube Scanner CLI
+        run: |
+          wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+          unzip -q sonar-scanner-cli-5.0.1.3006-linux.zip
+          echo "$PWD/sonar-scanner-5.0.1.3006-linux/bin" >> $GITHUB_PATH
+      
+      - name: Run SonarQube Scanner
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://sonarcloud.io
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # Quality gate is informational - provides insights without blocking CI
-        # Free tier "Sonar way" requires 80% coverage which is too strict for current codebase
-        continue-on-error: true
+        run: |
+          sonar-scanner \
+            -Dproject.settings=sonar-project.properties \
+            -Dsonar.token=$SONAR_TOKEN \
+            -Dsonar.host.url=https://sonarcloud.io
