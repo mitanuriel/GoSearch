@@ -64,17 +64,15 @@ func main() {
 
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Printf("Warning: could not open search log file: %v, using stdout instead", err)
-		searchLogger = log.New(os.Stdout, "SEARCH: ", log.LstdFlags)
-	} else {
-		log.Printf("Search logs will be written to %s", logPath)
-		searchLogger = log.New(f, "SEARCH: ", log.LstdFlags)
-		defer f.Close()
-	}
+	log.Printf("Warning: could not open search log file: %v, using stdout instead", err)
+	searchLogger = log.New(os.Stdout, "SEARCH: ", log.LstdFlags)
+} else {
+	log.Printf("Search logs will be written to %s", logPath)
+	searchLogger = log.New(f, "SEARCH: ", log.LstdFlags)
+	defer func() { _ = f.Close() }()
+}
 
-	checkTables()
-
-	// Start the cron scheduler to run checkTables periodically
+checkTables()	// Start the cron scheduler to run checkTables periodically
 	startCronScheduler()
 
 	err = db.Ping()

@@ -179,13 +179,13 @@ func checkCertificate(domain string) {
 	certValid := 0.0
 	daysUntilExpiry := 0.0
 
-	if err != nil {
-		log.Printf("Certificate validation failed for %s: %v", domain, err)
+if err != nil {
+	log.Printf("Certificate validation failed for %s: %v", domain, err)
 
-	} else {
-		defer conn.Close()
+} else {
+	defer func() { _ = conn.Close() }()
 
-		if len(conn.ConnectionState().PeerCertificates) > 0 {
+	if len(conn.ConnectionState().PeerCertificates) > 0 {
 			cert := conn.ConnectionState().PeerCertificates[0]
 
 			daysUntilExpiry = time.Until(cert.NotAfter).Hours() / 24

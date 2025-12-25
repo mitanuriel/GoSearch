@@ -60,15 +60,15 @@ func initElasticsearch() {
 				continue
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			res, err := esClient.Info(esClient.Info.WithContext(ctx))
-			cancel()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		res, err := esClient.Info(esClient.Info.WithContext(ctx))
+		cancel()
 
-			if err == nil {
-				defer res.Body.Close()
-				log.Printf("Successfully connected to Elasticsearch via %s", config.Addresses[0])
+		if err == nil {
+			defer func() { _ = res.Body.Close() }()
+			log.Printf("Successfully connected to Elasticsearch via %s", config.Addresses[0])
 
-				// Check if 'pages' index exists
+			// Check if 'pages' index exists
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				existsRes, err := esClient.Indices.Exists(
 					[]string{"pages"},

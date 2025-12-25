@@ -19,7 +19,7 @@ func extractSearchTerms(logPath string) []string {
 		log.Printf("Could not open log: %v", err)
 		return nil
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	re := regexp.MustCompile(`query="([^"]+)"`)
 	termsMap := make(map[string]bool)
