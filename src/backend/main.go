@@ -72,10 +72,11 @@ func main() {
 	defer func() { _ = f.Close() }()
 }
 
-checkTables()	// Start the cron scheduler to run checkTables periodically
-	startCronScheduler()
+// Run checkTables once at startup, then start the cron scheduler for periodic checks
+checkTables()
+startCronScheduler()
 
-	err = db.Ping()
+err = db.Ping()
 	if err != nil {
 		log.Fatalf("Database connection failed: %v", err)
 	}
