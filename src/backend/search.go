@@ -71,7 +71,7 @@ func searchPagesInEs(query string) ([]Page, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 
 		for rows.Next() {
 			var p Page
@@ -103,7 +103,7 @@ func searchPagesInEs(query string) ([]Page, error) {
 	if err != nil {
 		return pages, err
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	var r struct {
 		Hits struct {
@@ -189,7 +189,7 @@ func syncPagesToElasticsearch() error {
 	if err != nil {
 		return fmt.Errorf("error querying pages from DB: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	count := 0
 	for rows.Next() {

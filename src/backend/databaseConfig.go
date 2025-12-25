@@ -60,7 +60,7 @@ func queryDB(query string, args ...interface{}) (*sql.Rows, error) {
 
 func closeDB() {
 	if db != nil {
-		db.Close()
+		_ = db.Close()
 	}
 }
 func checkTables() {
@@ -71,7 +71,7 @@ func checkTables() {
 		log.Printf("Error querying users: %v", err)
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var user User
@@ -90,7 +90,7 @@ func checkTables() {
 		log.Printf("Error querying pages: %v", err)
 		return
 	}
-	defer rows2.Close()
+	defer func() { _ = rows2.Close() }()
 
 	for rows2.Next() {
 		var page Page

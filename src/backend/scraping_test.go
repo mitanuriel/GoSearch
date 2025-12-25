@@ -123,14 +123,14 @@ func createTempLogFile(content string) (string, error) {
 
 	if content != "" {
 		if _, err := tmpfile.WriteString(content); err != nil {
-			tmpfile.Close()
-			os.Remove(tmpfile.Name())
+			_ = tmpfile.Close()
+			_ = os.Remove(tmpfile.Name())
 			return "", err
 		}
 	}
 
 	if err := tmpfile.Close(); err != nil {
-		os.Remove(tmpfile.Name())
+		_ = os.Remove(tmpfile.Name())
 		return "", err
 	}
 
@@ -139,12 +139,12 @@ func createTempLogFile(content string) (string, error) {
 
 // Helper function to cleanup temp file
 func cleanupTempFile(path string) {
-	os.Remove(path)
+	_ = os.Remove(path)
 }
 
 func TestAlreadyProcessed(t *testing.T) {
 	mockDB, mock := setupMockDB()
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 
 	tests := []struct {
 		name      string
@@ -185,7 +185,7 @@ func TestAlreadyProcessed(t *testing.T) {
 
 func TestMarkAsProcessed(t *testing.T) {
 	mockDB, mock := setupMockDB()
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 
 	tests := []struct {
 		name      string

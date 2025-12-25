@@ -67,7 +67,7 @@ func TestValidatePassword(t *testing.T) {
 
 func TestUserExists(t *testing.T) {
 	mockDB, mock := setupMockDB()
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 
 	tests := []struct {
 		name              string
@@ -156,7 +156,7 @@ func TestUserIsLoggedIn(t *testing.T) {
 				w := httptest.NewRecorder()
 				session, _ := store.Get(req, "session-name")
 				session.Values["user_id"] = 1
-				session.Save(req, w)
+				_ = session.Save(req, w)
 				// Copy cookies from response to request
 				for _, cookie := range w.Result().Cookies() {
 					req.AddCookie(cookie)

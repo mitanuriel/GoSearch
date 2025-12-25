@@ -11,7 +11,7 @@ import (
 
 func TestRootHandler(t *testing.T) {
 	// Initialize templates
-	loadTemplates()
+	_, _ = loadTemplates()
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -28,7 +28,7 @@ func TestRootHandler(t *testing.T) {
 
 func TestAboutHandler(t *testing.T) {
 	// Initialize templates
-	loadTemplates()
+	_, _ = loadTemplates()
 
 	req := httptest.NewRequest("GET", "/about", nil)
 	w := httptest.NewRecorder()

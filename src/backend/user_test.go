@@ -57,7 +57,7 @@ func TestLoadTemplates(t *testing.T) {
 
 func TestApiRegisterHandler_InvalidRequests(t *testing.T) {
 	mockDB, _ := setupMockDB()
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	
 	mockStore := sessions.NewCookieStore([]byte("test-secret"))
 	store = mockStore
@@ -151,7 +151,7 @@ func TestLogoutHandler(t *testing.T) {
 		// Create a session first
 		session, _ := store.Get(req, "session-name")
 		session.Values["user_id"] = 1
-		session.Save(req, w)
+		_ = session.Save(req, w)
 
 		// Copy cookie to new request
 		for _, cookie := range w.Result().Cookies() {
@@ -183,13 +183,13 @@ func TestLogoutHandler(t *testing.T) {
 
 func TestApiLogin_MissingCredentials(t *testing.T) {
 	mockDB, _ := setupMockDB()
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 
 	mockStore := sessions.NewCookieStore([]byte("test-secret"))
 	store = mockStore
 
 	// Initialize templates - will fail gracefully if not found
-	loadTemplates("layout.html", "login.html")
+	_, _ = loadTemplates("layout.html", "login.html")
 
 	tests := []struct {
 		name     string
