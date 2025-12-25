@@ -30,7 +30,7 @@ func setupMockDB() (*sql.DB, sqlmock.Sqlmock) {
 
 func TestLoginSuccess(t *testing.T) {
 	mockDB, mock := setupMockDB()
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 
 	testUsername := "testUser"
 	testPassword := "testPassword"
@@ -114,7 +114,7 @@ func TestFailedLogin(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockDB, mock := setupMockDB()
-			defer mockDB.Close()
+			defer func() { _ = mockDB.Close() }()
 
 			//Setup mock based on test case
 			tc.mockSetup(mock)
