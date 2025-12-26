@@ -20,6 +20,7 @@ services:
       - SESSION_SECRET=${SESSION_SECRET}
       - SEARCH_LOG_PATH=/app/src/backend/search.log
       - SQLITE_DB_PATH=/app/src/whoknows.db
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
     depends_on:
       - postgres
       - elasticsearch
