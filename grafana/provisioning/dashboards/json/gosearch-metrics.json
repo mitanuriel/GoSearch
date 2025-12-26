@@ -1,0 +1,20 @@
+{
+  "title": "GoSearch Metrics",
+  "uid": "gosearch-metrics",
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "HTTP Request Rate",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {
+          "expr": "rate(http_requests_total[5m])",
+          "legendFormat": "{{method}} {{endpoint}}"
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "time": {"from": "now-15m", "to": "now"}
+}

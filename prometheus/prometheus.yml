@@ -8,5 +8,5 @@ scrape_configs:
     scheme: http
     static_configs:
       - targets:
-          - 'gosearch.dk:8081'
+          - 'go-app:8080'
       
