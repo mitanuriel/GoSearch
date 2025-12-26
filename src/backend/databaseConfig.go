@@ -94,7 +94,7 @@ func checkTables() {
 
 	for rows2.Next() {
 		var page Page
-		err := rows2.Scan(&page.URL, &page.Title, &page.Language, &page.LastUpdated, &page.Content)
+		err := rows2.Scan(&page.Title, &page.URL, &page.Language, &page.LastUpdated, &page.Content)
 		if err != nil {
 			log.Printf("Error scanning page: %v", err)
 			continue
