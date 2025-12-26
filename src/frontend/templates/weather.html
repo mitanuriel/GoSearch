@@ -1,5 +1,7 @@
 {{ define "content" }}
         <h1>Weather in {{.City}}</h1>
-        <p>{{.Message}}</p>
+        <div class="weather-info">
+            <p>{{.Message}}</p>
+        </div>
         <a href="/">Back to home</a>
 {{ end }}
