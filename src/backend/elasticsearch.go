@@ -29,6 +29,12 @@ func initElasticsearch() {
 	if esUsername == "" {
 		esUsername = "elastic" // Default for local development only
 	}
+	
+	// Allow disabling TLS verification for development (default: false for security)
+	insecureSkipVerify := os.Getenv("ES_INSECURE_SKIP_VERIFY") == "true"
+	if insecureSkipVerify {
+		log.Println("WARNING: TLS certificate verification is disabled for Elasticsearch")
+	}
 
 	for i := 0; i < maxRetries; i++ {
 		// Try both HTTPS and HTTP connections
@@ -40,16 +46,17 @@ func initElasticsearch() {
 				Password:  esPassword,
 			},
 			// Try HTTPS as fallback
-			// Note: InsecureSkipVerify is used for development/self-signed certs
-			// In production, use proper certificate validation
+			// Note: Certificate verification can be disabled via ES_INSECURE_SKIP_VERIFY=true
+			// Only use in development with self-signed certificates
 			{
 				Addresses: []string{fmt.Sprintf("https://%s:9200", esHost)},
 				Username:  esUsername,
 				Password:  esPassword,
 				Transport: &http.Transport{
 					TLSClientConfig: &tls.Config{
-						InsecureSkipVerify: true,       // nosemgrep: go.lang.security.audit.net.ssl.ssl-v3-is-insecure
-						MinVersion:         tls.VersionTLS12, // Enforce TLS 1.2 minimum
+						InsecureSkipVerify: insecureSkipVerify, // nosemgrep: go.lang.security.audit.net.ssl.ssl-v3-is-insecure
+						MinVersion:         tls.VersionTLS12,   // Enforce TLS 1.2 minimum
+						ServerName:         esHost,             // Enable hostname verification
 					},
 				},
 			},
