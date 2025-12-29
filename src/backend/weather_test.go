@@ -1,4 +1,4 @@
-// Unit tests for weather handler
+// Unit tests for weather functionality
 package main
 
 import (
@@ -10,6 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// NOTE: Tests for fetchWeatherData are in develop branch
+// They will be uncommented after merge since fetchWeatherData exists in develop
+
+// Tests for weatherHandler HTTP handler
 func TestWeatherHandler_WithCity(t *testing.T) {
 	mockStore := sessions.NewCookieStore([]byte("test-secret"))
 	store = mockStore
