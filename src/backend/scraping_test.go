@@ -389,6 +389,7 @@ func TestStartScraping_NoSearchTerms(t *testing.T) {
 	StartScraping(tmpfile.Name())
 
 	// Test passes if no panic
+	t.Log("Successfully handled empty search log file without errors")
 }
 
 func TestStartScraping_NonExistentFile(t *testing.T) {
@@ -396,6 +397,7 @@ func TestStartScraping_NonExistentFile(t *testing.T) {
 	StartScraping("/non/existent/path.log")
 
 	// Test passes if no panic
+	t.Log("Successfully handled non-existent file without panicking")
 }
 
 func TestTryScrapeInLanguages_NoLanguages(t *testing.T) {
