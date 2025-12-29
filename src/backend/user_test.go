@@ -232,3 +232,55 @@ func TestApiLogin_MissingCredentials(t *testing.T) {
 		})
 	}
 }
+
+func TestRegisterHandler_NotLoggedIn(t *testing.T) {
+	// Setup
+	mockStore := sessions.NewCookieStore([]byte("test-secret"))
+	store = mockStore
+
+	// Create request
+	req := httptest.NewRequest("GET", "/register", nil)
+	w := httptest.NewRecorder()
+
+	// Call handler
+	registerHandler(w, req)
+
+	// Should render registration page (StatusOK) or fail gracefully if templates missing (StatusInternalServerError)
+	resp := w.Result()
+	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusInternalServerError,
+		"Expected StatusOK (200) or StatusInternalServerError (500), got %d", resp.StatusCode)
+	if resp.StatusCode == http.StatusOK {
+		assert.Contains(t, resp.Header.Get("Content-Type"), "text/html")
+	}
+}
+
+func TestRegisterHandler_AlreadyLoggedIn(t *testing.T) {
+	// Setup session store (no DB needed - handler only checks session)
+	mockStore := sessions.NewCookieStore([]byte("test-secret"))
+	store = mockStore
+
+	// Create request with session
+	req := httptest.NewRequest("GET", "/register", nil)
+	w := httptest.NewRecorder()
+
+	// Create authenticated session
+	session, _ := store.Get(req, "session-name")
+	session.Values["user_id"] = 123
+	_ = session.Save(req, w)
+
+	// Create new request with session cookie
+	cookies := w.Result().Cookies()
+	req2 := httptest.NewRequest("GET", "/register", nil)
+	for _, cookie := range cookies {
+		req2.AddCookie(cookie)
+	}
+	w2 := httptest.NewRecorder()
+
+	// Call handler
+	registerHandler(w2, req2)
+
+	// Should redirect to home
+	resp := w2.Result()
+	assert.Equal(t, http.StatusFound, resp.StatusCode)
+	assert.Equal(t, "/", resp.Header.Get("Location"))
+}

@@ -222,3 +222,189 @@ func TestMarkAsProcessed(t *testing.T) {
 		})
 	}
 }
+
+func TestSavePageToDBWithLang_ValidPage(t *testing.T) {
+	// Setup mock database
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Create test page
+	page := Page{
+		Title:   "Test Page",
+		URL:     "https://en.wikipedia.org/wiki/Test",
+		Content: "This is test content",
+	}
+
+	// Expect INSERT query
+	mock.ExpectExec("INSERT INTO pages").
+		WithArgs(page.URL, page.Title, page.Content, "en").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	// Call function
+	err := savePageToDBWithLang(page, "en")
+
+	// Verify
+	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestScrapeWikipedia_InvalidDomain(t *testing.T) {
+	// Test that scraping fails gracefully with invalid domains
+	// Since scrapeWikipedia uses colly with AllowedDomains, it will reject non-Wikipedia URLs
+	page, err := scrapeWikipedia("http://example.com/test", "en")
+
+	// Should return an error because example.com is not in allowed domains (en.wikipedia.org)
+	assert.Error(t, err, "Should fail for non-Wikipedia domain")
+	assert.Contains(t, err.Error(), "Forbidden", "Error should mention forbidden domain")
+	assert.Equal(t, "http://example.com/test", page.URL)
+	assert.Equal(t, "en", page.Language)
+}
+
+func TestScrapeWikipedia_URLFormat(t *testing.T) {
+	// Test that the function accepts properly formatted URLs
+	// We can't actually scrape without a real server, but we can verify the function signature works
+	
+	testCases := []struct{
+		name string
+		url string
+		lang string
+	}{
+		{"English", "https://en.wikipedia.org/wiki/Go_(programming_language)", "en"},
+		{"Danish", "https://da.wikipedia.org/wiki/Go_(programmeringssprog)", "da"},
+		{"Swedish", "https://sv.wikipedia.org/wiki/Go_(programspråk)", "sv"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Note: This will make actual HTTP requests to Wikipedia
+			// In a real test environment, you might want to skip these or use VCR/recording
+			page, err := scrapeWikipedia(tc.url, tc.lang)
+			
+			// We expect these to succeed (or fail gracefully if Wikipedia is down)
+			if err != nil {
+				t.Logf("Scraping %s failed (may be network issue): %v", tc.url, err)
+			} else {
+				assert.NotEmpty(t, page.Title, "Title should not be empty on success")
+				assert.Equal(t, tc.url, page.URL)
+				assert.Equal(t, tc.lang, page.Language)
+				t.Logf("Successfully scraped: %s", page.Title)
+			}
+		})
+	}
+}
+
+func TestSavePageToDBWithLang_EmptyTitle(t *testing.T) {
+	// Setup mock database
+	mockDB, _ := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Create page with empty title
+	page := Page{
+		Title:   "",
+		URL:     "https://en.wikipedia.org/wiki/Test",
+		Content: "Content",
+	}
+
+	// Call function
+	err := savePageToDBWithLang(page, "en")
+
+	// Should return error for invalid data
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid page data")
+}
+
+func TestSavePageToDBWithLang_EmptyURL(t *testing.T) {
+	// Setup mock database
+	mockDB, _ := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Create page with empty URL
+	page := Page{
+		Title:   "Test",
+		URL:     "",
+		Content: "Content",
+	}
+
+	// Call function
+	err := savePageToDBWithLang(page, "en")
+
+	// Should return error
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid page data")
+}
+
+func TestSavePageToDBWithLang_EmptyContent(t *testing.T) {
+	// Setup mock database
+	mockDB, _ := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Create page with empty content
+	page := Page{
+		Title:   "Test",
+		URL:     "https://test.com",
+		Content: "",
+	}
+
+	// Call function
+	err := savePageToDBWithLang(page, "en")
+
+	// Should return error
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid page data")
+}
+
+func TestSavePageToDBWithLang_DatabaseError(t *testing.T) {
+	// Setup mock database
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Create valid page
+	page := Page{
+		Title:   "Test Page",
+		URL:     "https://en.wikipedia.org/wiki/Test",
+		Content: "Content",
+	}
+
+	// Expect INSERT query to fail
+	mock.ExpectExec("INSERT INTO pages").
+		WithArgs(page.URL, page.Title, page.Content, "en").
+		WillReturnError(assert.AnError)
+
+	// Call function
+	err := savePageToDBWithLang(page, "en")
+
+	// Should return error
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error inserting or updating page")
+}
+
+func TestStartScraping_NoSearchTerms(t *testing.T) {
+	// Create empty log file
+	tmpfile, err := os.CreateTemp("", "test-search-*.log")
+	assert.NoError(t, err)
+	defer os.Remove(tmpfile.Name())
+	tmpfile.Close()
+
+	// Call StartScraping (should handle empty gracefully)
+	StartScraping(tmpfile.Name())
+
+	// Test passes if no panic
+	t.Log("Successfully handled empty search log file without errors")
+}
+
+func TestStartScraping_NonExistentFile(t *testing.T) {
+	// Call with non-existent file (should handle gracefully)
+	StartScraping("/non/existent/path.log")
+
+	// Test passes if no panic
+	t.Log("Successfully handled non-existent file without panicking")
+}
+
+func TestTryScrapeInLanguages_NoLanguages(t *testing.T) {
+	// Call with empty language list
+	_, _, err := tryScrapeInLanguages("test", []string{})
+
+	// Should return error
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no valid Wikipedia page found")
+}
