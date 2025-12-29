@@ -193,3 +193,88 @@ func TestSearchPagesInEs_ScanError(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, pages, 0) // Bad row skipped
 }
+
+func TestSearchHandler_TemplateError(t *testing.T) {
+	// Temporarily modify templatePath to cause template error
+	originalPath := templatePath
+	templatePath = "/nonexistent/path/"
+	defer func() { templatePath = originalPath }()
+
+	// Setup mock DB for searchPagesInEs
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock DB query to return results
+	rows := sqlmock.NewRows([]string{"title", "url", "content"}).
+		AddRow("Test Page", "http://test.com", "Test content")
+	mock.ExpectQuery("SELECT title, url, content FROM pages WHERE content LIKE ?").
+		WithArgs("%test%").
+		WillReturnRows(rows)
+
+	// Set esClient to nil to use DB fallback
+	originalEsClient := esClient
+	esClient = nil
+	defer func() { esClient = originalEsClient }()
+
+	req := httptest.NewRequest("GET", "/search?q=test", nil)
+	w := httptest.NewRecorder()
+
+	searchHandler(w, req)
+
+	resp := w.Result()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+}
+
+func TestSearchHandler_SearchError(t *testing.T) {
+	// Setup mock DB to return error
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	mock.ExpectQuery("SELECT title, url, content FROM pages WHERE content LIKE ?").
+		WithArgs("%test%").
+		WillReturnError(assert.AnError)
+
+	// Set esClient to nil to use DB fallback
+	originalEsClient := esClient
+	esClient = nil
+	defer func() { esClient = originalEsClient }()
+
+	req := httptest.NewRequest("GET", "/search?q=test", nil)
+	w := httptest.NewRecorder()
+
+	searchHandler(w, req)
+
+	resp := w.Result()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+}
+
+func TestSearchPagesInEs_MultipleResults(t *testing.T) {
+	// Setup mock database
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock multiple rows
+	rows := sqlmock.NewRows([]string{"title", "url", "content"}).
+		AddRow("Page 1", "http://test1.com", "Content 1").
+		AddRow("Page 2", "http://test2.com", "Content 2").
+		AddRow("Page 3", "http://test3.com", "Content 3")
+
+	mock.ExpectQuery("SELECT title, url, content FROM pages WHERE content LIKE ?").
+		WithArgs("%golang%").
+		WillReturnRows(rows)
+
+	// Set esClient to nil to use DB fallback
+	originalEsClient := esClient
+	esClient = nil
+	defer func() { esClient = originalEsClient }()
+
+	// Execute search
+	pages, err := searchPagesInEs("golang")
+
+	// Verify results
+	assert.NoError(t, err)
+	assert.Len(t, pages, 3)
+	assert.Equal(t, "Page 1", pages[0].Title)
+	assert.Equal(t, "Page 2", pages[1].Title)
+	assert.Equal(t, "Page 3", pages[2].Title)
+}
