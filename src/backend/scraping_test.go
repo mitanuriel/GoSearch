@@ -248,6 +248,51 @@ func TestSavePageToDBWithLang_ValidPage(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestScrapeWikipedia_InvalidDomain(t *testing.T) {
+	// Test that scraping fails gracefully with invalid domains
+	// Since scrapeWikipedia uses colly with AllowedDomains, it will reject non-Wikipedia URLs
+	page, err := scrapeWikipedia("http://example.com/test", "en")
+
+	// Should return an error because example.com is not in allowed domains (en.wikipedia.org)
+	assert.Error(t, err, "Should fail for non-Wikipedia domain")
+	assert.Contains(t, err.Error(), "Forbidden", "Error should mention forbidden domain")
+	assert.Equal(t, "http://example.com/test", page.URL)
+	assert.Equal(t, "en", page.Language)
+}
+
+func TestScrapeWikipedia_URLFormat(t *testing.T) {
+	// Test that the function accepts properly formatted URLs
+	// We can't actually scrape without a real server, but we can verify the function signature works
+	
+	testCases := []struct{
+		name string
+		url string
+		lang string
+	}{
+		{"English", "https://en.wikipedia.org/wiki/Go_(programming_language)", "en"},
+		{"Danish", "https://da.wikipedia.org/wiki/Go_(programmeringssprog)", "da"},
+		{"Swedish", "https://sv.wikipedia.org/wiki/Go_(programspråk)", "sv"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Note: This will make actual HTTP requests to Wikipedia
+			// In a real test environment, you might want to skip these or use VCR/recording
+			page, err := scrapeWikipedia(tc.url, tc.lang)
+			
+			// We expect these to succeed (or fail gracefully if Wikipedia is down)
+			if err != nil {
+				t.Logf("Scraping %s failed (may be network issue): %v", tc.url, err)
+			} else {
+				assert.NotEmpty(t, page.Title, "Title should not be empty on success")
+				assert.Equal(t, tc.url, page.URL)
+				assert.Equal(t, tc.lang, page.Language)
+				t.Logf("Successfully scraped: %s", page.Title)
+			}
+		})
+	}
+}
+
 func TestSavePageToDBWithLang_EmptyTitle(t *testing.T) {
 	// Setup mock database
 	mockDB, _ := setupMockDB()
