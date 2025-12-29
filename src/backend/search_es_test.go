@@ -66,13 +66,11 @@ func TestSyncPagesToElasticsearch_EmptyDatabase(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestSyncPagesToElasticsearch_ScanError(t *testing.T) {
+func TestSyncPagesToElasticsearch_ValidRowScan(t *testing.T) {
 	mockDB, mock := setupMockDB()
 	defer func() { _ = mockDB.Close() }()
 
-	// Test that scan errors would be handled in the function
-	// (syncPagesToElasticsearch logs and continues on scan errors)
-	// We verify the pattern by testing with correct data that doesn't cause errors
+	// Test that well-formed rows scan successfully
 	rows := sqlmock.NewRows([]string{"title", "url", "content"}).
 		AddRow("Valid Title", "http://example.com", "Valid content")
 	mock.ExpectQuery("SELECT title, url, content FROM pages").WillReturnRows(rows)

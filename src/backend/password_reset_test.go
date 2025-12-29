@@ -12,6 +12,135 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestSetupPasswordResetTable_ColumnAndTableExist(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock column existence check - column exists
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	// Mock table existence check - table exists
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.tables WHERE table_name = 'reset_tokens' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	// Mock verifySetup calls
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.tables WHERE table_name = 'reset_tokens' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	err := setupPasswordResetTable()
+
+	assert.NoError(t, err, "Setup should succeed when everything exists")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSetupPasswordResetTable_CreateColumn(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock column existence check - column doesn't exist
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+	// Mock ALTER TABLE to add column
+	mock.ExpectExec("ALTER TABLE users ADD COLUMN password_changed BOOLEAN DEFAULT TRUE").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	// Mock UPDATE existing users
+	mock.ExpectExec("UPDATE users SET password_changed = FALSE").
+		WillReturnResult(sqlmock.NewResult(0, 5))
+
+	// Mock table existence check - table doesn't exist
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.tables WHERE table_name = 'reset_tokens' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+	// Mock CREATE TABLE
+	mock.ExpectExec("CREATE TABLE reset_tokens").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	// Mock verifySetup calls
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.tables WHERE table_name = 'reset_tokens' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	err := setupPasswordResetTable()
+
+	assert.NoError(t, err, "Setup should succeed after creating column and table")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSetupPasswordResetTable_ColumnCheckError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Skip ping (it's not monitored by default in sqlmock)
+	
+	// Mock column existence check to return error
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnError(assert.AnError)
+
+	err := setupPasswordResetTable()
+
+	assert.Error(t, err, "Setup should fail when column check fails")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestVerifySetup_Success(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock column existence check
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	// Mock table existence check
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.tables WHERE table_name = 'reset_tokens' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	err := verifySetup()
+
+	assert.NoError(t, err, "Verification should succeed when both exist")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestVerifySetup_MissingColumn(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock column existence check - column doesn't exist
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+	err := verifySetup()
+
+	// verifySetup returns the err variable which is nil even if column doesn't exist (bug in original code)
+	// But it logs the error, so we test the behavior as-is
+	assert.NoError(t, err, "Current implementation doesn't return error for missing column")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestVerifySetup_MissingTable(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock column existence check - exists
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	// Mock table existence check - table doesn't exist
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.tables WHERE table_name = 'reset_tokens' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+	err := verifySetup()
+
+	// Same as above - current implementation doesn't return error
+	assert.NoError(t, err, "Current implementation doesn't return error for missing table")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestCheckPasswordResetRequired_PasswordChanged(t *testing.T) {
 	mockDB, mock := setupMockDB()
 	defer func() { _ = mockDB.Close() }()

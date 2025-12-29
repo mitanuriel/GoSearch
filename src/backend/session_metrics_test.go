@@ -16,7 +16,7 @@ func TestRecordUserRequest_Authenticated(t *testing.T) {
 	recordUserRequest(req, "authenticated")
 
 	// Test passes if no panic (metrics are recorded internally)
-	// We can't easily verify Prometheus metrics in unit tests, but we ensure no errors
+	t.Log("Successfully recorded authenticated user request without errors")
 }
 
 func TestRecordUserRequest_Anonymous(t *testing.T) {
@@ -27,6 +27,7 @@ func TestRecordUserRequest_Anonymous(t *testing.T) {
 	recordUserRequest(req, "anonymous")
 
 	// Test passes if no panic
+	t.Log("Successfully recorded anonymous user request without errors")
 }
 
 func TestGetAuthStatus_Anonymous(t *testing.T) {
@@ -104,6 +105,20 @@ func TestGetAuthStatus_NoUserID(t *testing.T) {
 }
 
 func TestTrackActiveSession_NewSession(t *testing.T) {
+	// Save original state
+	activeSessionsLock.Lock()
+	originalSessions := make(map[string]bool)
+	for k, v := range activeSessions {
+		originalSessions[k] = v
+	}
+	activeSessionsLock.Unlock()
+	defer func() {
+		// Restore original state
+		activeSessionsLock.Lock()
+		activeSessions = originalSessions
+		activeSessionsLock.Unlock()
+	}()
+
 	// Clear active sessions
 	activeSessionsLock.Lock()
 	activeSessions = make(map[string]bool)
@@ -121,6 +136,20 @@ func TestTrackActiveSession_NewSession(t *testing.T) {
 }
 
 func TestTrackActiveSession_ExistingSession(t *testing.T) {
+	// Save original state
+	activeSessionsLock.Lock()
+	originalSessions := make(map[string]bool)
+	for k, v := range activeSessions {
+		originalSessions[k] = v
+	}
+	activeSessionsLock.Unlock()
+	defer func() {
+		// Restore original state
+		activeSessionsLock.Lock()
+		activeSessions = originalSessions
+		activeSessionsLock.Unlock()
+	}()
+
 	// Clear and add existing session
 	activeSessionsLock.Lock()
 	activeSessions = make(map[string]bool)
@@ -139,6 +168,20 @@ func TestTrackActiveSession_ExistingSession(t *testing.T) {
 }
 
 func TestRemoveActiveSession_ExistingSession(t *testing.T) {
+	// Save original state
+	activeSessionsLock.Lock()
+	originalSessions := make(map[string]bool)
+	for k, v := range activeSessions {
+		originalSessions[k] = v
+	}
+	activeSessionsLock.Unlock()
+	defer func() {
+		// Restore original state
+		activeSessionsLock.Lock()
+		activeSessions = originalSessions
+		activeSessionsLock.Unlock()
+	}()
+
 	// Add a session
 	activeSessionsLock.Lock()
 	activeSessions = make(map[string]bool)
@@ -157,6 +200,20 @@ func TestRemoveActiveSession_ExistingSession(t *testing.T) {
 }
 
 func TestRemoveActiveSession_NonExistentSession(t *testing.T) {
+	// Save original state
+	activeSessionsLock.Lock()
+	originalSessions := make(map[string]bool)
+	for k, v := range activeSessions {
+		originalSessions[k] = v
+	}
+	activeSessionsLock.Unlock()
+	defer func() {
+		// Restore original state
+		activeSessionsLock.Lock()
+		activeSessions = originalSessions
+		activeSessionsLock.Unlock()
+	}()
+
 	// Clear sessions
 	activeSessionsLock.Lock()
 	activeSessions = make(map[string]bool)
@@ -166,6 +223,7 @@ func TestRemoveActiveSession_NonExistentSession(t *testing.T) {
 	removeActiveSession("non-existent", "anonymous")
 
 	// Test passes if no panic
+	t.Log("Successfully handled removal of non-existent session without errors")
 }
 
 func TestIncrementUserSessionsTotal(t *testing.T) {
@@ -176,4 +234,5 @@ func TestIncrementUserSessionsTotal(t *testing.T) {
 	incrementUserSessionsTotal("anonymous")
 
 	// Test passes if no panic (Prometheus metrics recorded)
+	t.Log("Successfully incremented session counters without errors")
 }
