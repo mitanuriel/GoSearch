@@ -4,6 +4,7 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/gorilla/sessions"
@@ -85,15 +86,9 @@ func TestWeatherHandler_TemplateError(t *testing.T) {
 
 	resp := w.Result()
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-package main
+}
 
-import (
-	"os"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-)
-
+// Tests for fetchWeatherData API function (from develop branch)
 func TestFetchWeatherData_MissingAPIKey(t *testing.T) {
 	// Save original and unset API key
 	originalKey := os.Getenv("OPENWEATHER_API_KEY")
