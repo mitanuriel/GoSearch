@@ -290,6 +290,19 @@ func TestUserIsLoggedIn(t *testing.T) {
 			},
 			expected: false,
 		},
+		{
+			name: "Session error with corrupted cookie",
+			setupReq: func() *http.Request {
+				req := httptest.NewRequest("GET", "/", nil)
+				// Add a corrupted/invalid session cookie that will cause store.Get to fail
+				req.AddCookie(&http.Cookie{
+					Name:  "session-name",
+					Value: "invalid-corrupted-session-data-that-cannot-be-decoded",
+				})
+				return req
+			},
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {
