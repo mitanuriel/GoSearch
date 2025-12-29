@@ -222,3 +222,142 @@ func TestMarkAsProcessed(t *testing.T) {
 		})
 	}
 }
+
+func TestSavePageToDBWithLang_ValidPage(t *testing.T) {
+	// Setup mock database
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Create test page
+	page := Page{
+		Title:   "Test Page",
+		URL:     "https://en.wikipedia.org/wiki/Test",
+		Content: "This is test content",
+	}
+
+	// Expect INSERT query
+	mock.ExpectExec("INSERT INTO pages").
+		WithArgs(page.URL, page.Title, page.Content, "en").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	// Call function
+	err := savePageToDBWithLang(page, "en")
+
+	// Verify
+	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSavePageToDBWithLang_EmptyTitle(t *testing.T) {
+	// Setup mock database
+	mockDB, _ := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Create page with empty title
+	page := Page{
+		Title:   "",
+		URL:     "https://en.wikipedia.org/wiki/Test",
+		Content: "Content",
+	}
+
+	// Call function
+	err := savePageToDBWithLang(page, "en")
+
+	// Should return error for invalid data
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid page data")
+}
+
+func TestSavePageToDBWithLang_EmptyURL(t *testing.T) {
+	// Setup mock database
+	mockDB, _ := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Create page with empty URL
+	page := Page{
+		Title:   "Test",
+		URL:     "",
+		Content: "Content",
+	}
+
+	// Call function
+	err := savePageToDBWithLang(page, "en")
+
+	// Should return error
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid page data")
+}
+
+func TestSavePageToDBWithLang_EmptyContent(t *testing.T) {
+	// Setup mock database
+	mockDB, _ := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Create page with empty content
+	page := Page{
+		Title:   "Test",
+		URL:     "https://test.com",
+		Content: "",
+	}
+
+	// Call function
+	err := savePageToDBWithLang(page, "en")
+
+	// Should return error
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid page data")
+}
+
+func TestSavePageToDBWithLang_DatabaseError(t *testing.T) {
+	// Setup mock database
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Create valid page
+	page := Page{
+		Title:   "Test Page",
+		URL:     "https://en.wikipedia.org/wiki/Test",
+		Content: "Content",
+	}
+
+	// Expect INSERT query to fail
+	mock.ExpectExec("INSERT INTO pages").
+		WithArgs(page.URL, page.Title, page.Content, "en").
+		WillReturnError(assert.AnError)
+
+	// Call function
+	err := savePageToDBWithLang(page, "en")
+
+	// Should return error
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error inserting or updating page")
+}
+
+func TestStartScraping_NoSearchTerms(t *testing.T) {
+	// Create empty log file
+	tmpfile, err := os.CreateTemp("", "test-search-*.log")
+	assert.NoError(t, err)
+	defer os.Remove(tmpfile.Name())
+	tmpfile.Close()
+
+	// Call StartScraping (should handle empty gracefully)
+	StartScraping(tmpfile.Name())
+
+	// Test passes if no panic
+}
+
+func TestStartScraping_NonExistentFile(t *testing.T) {
+	// Call with non-existent file (should handle gracefully)
+	StartScraping("/non/existent/path.log")
+
+	// Test passes if no panic
+}
+
+func TestTryScrapeInLanguages_NoLanguages(t *testing.T) {
+	// Call with empty language list
+	_, _, err := tryScrapeInLanguages("test", []string{})
+
+	// Should return error
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no valid Wikipedia page found")
+}
