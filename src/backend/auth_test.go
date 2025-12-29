@@ -26,6 +26,26 @@ func TestHashPassword(t *testing.T) {
 	assert.NoError(t, err, "Hashed password should validate against original")
 }
 
+func TestHashPassword_EmptyPassword(t *testing.T) {
+	// Test with empty password
+	hashed, err := hashPassword("")
+	assert.NoError(t, err, "bcrypt allows empty passwords")
+	assert.NotEmpty(t, hashed)
+}
+
+func TestHashPassword_LongPassword(t *testing.T) {
+	// Test with very long password (bcrypt has 72 byte limit)
+	longPassword := ""
+	for i := 0; i < 100; i++ {
+		longPassword += "a"
+	}
+	hashed, err := hashPassword(longPassword)
+	// bcrypt will return an error for passwords > 72 bytes
+	assert.Error(t, err, "bcrypt should error on passwords exceeding 72 bytes")
+	assert.Empty(t, hashed)
+	assert.Contains(t, err.Error(), "password length exceeds 72 bytes")
+}
+
 func TestValidatePassword(t *testing.T) {
 	password := "testPassword123"
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -140,6 +160,72 @@ func TestUserExists(t *testing.T) {
 	}
 }
 
+func TestUserExists_BeginError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Test when db.Begin() fails
+	mock.ExpectBegin().WillReturnError(assert.AnError)
+
+	usernameExists, emailExists := userExists("test", "test@example.com")
+	assert.False(t, usernameExists)
+	assert.False(t, emailExists)
+}
+
+func TestUserExists_UsernameQueryError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Test when username query fails
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT EXISTS\\(SELECT 1 FROM users WHERE LOWER\\(username\\) = LOWER\\(\\$1\\)\\)").
+		WithArgs("test").
+		WillReturnError(assert.AnError)
+	mock.ExpectRollback()
+
+	usernameExists, emailExists := userExists("test", "test@example.com")
+	assert.False(t, usernameExists)
+	assert.False(t, emailExists)
+}
+
+func TestUserExists_EmailQueryError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Test when email query fails
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT EXISTS\\(SELECT 1 FROM users WHERE LOWER\\(username\\) = LOWER\\(\\$1\\)\\)").
+		WithArgs("test").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectQuery("SELECT EXISTS\\(SELECT 1 FROM users WHERE LOWER\\(email\\) = LOWER\\(\\$1\\)\\)").
+		WithArgs("test@example.com").
+		WillReturnError(assert.AnError)
+	mock.ExpectRollback()
+
+	usernameExists, emailExists := userExists("test", "test@example.com")
+	assert.False(t, usernameExists)
+	assert.False(t, emailExists)
+}
+
+func TestUserExists_CommitError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Test when commit fails
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT EXISTS\\(SELECT 1 FROM users WHERE LOWER\\(username\\) = LOWER\\(\\$1\\)\\)").
+		WithArgs("test").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectQuery("SELECT EXISTS\\(SELECT 1 FROM users WHERE LOWER\\(email\\) = LOWER\\(\\$1\\)\\)").
+		WithArgs("test@example.com").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectCommit().WillReturnError(assert.AnError)
+
+	usernameExists, emailExists := userExists("test", "test@example.com")
+	assert.False(t, usernameExists)
+	assert.False(t, emailExists)
+}
+
 func TestUserIsLoggedIn(t *testing.T) {
 	mockStore := sessions.NewCookieStore([]byte("test-secret"))
 	store = mockStore
@@ -169,6 +255,38 @@ func TestUserIsLoggedIn(t *testing.T) {
 			name: "User is not logged in",
 			setupReq: func() *http.Request {
 				return httptest.NewRequest("GET", "/", nil)
+			},
+			expected: false,
+		},
+		{
+			name: "Session without user_id",
+			setupReq: func() *http.Request {
+				req := httptest.NewRequest("GET", "/", nil)
+				w := httptest.NewRecorder()
+				session, _ := store.Get(req, "session-name")
+				session.Values["other_key"] = "value"
+				_ = session.Save(req, w)
+				// Copy cookies from response to request
+				for _, cookie := range w.Result().Cookies() {
+					req.AddCookie(cookie)
+				}
+				return req
+			},
+			expected: false,
+		},
+		{
+			name: "Session with nil user_id",
+			setupReq: func() *http.Request {
+				req := httptest.NewRequest("GET", "/", nil)
+				w := httptest.NewRecorder()
+				session, _ := store.Get(req, "session-name")
+				session.Values["user_id"] = nil
+				_ = session.Save(req, w)
+				// Copy cookies from response to request
+				for _, cookie := range w.Result().Cookies() {
+					req.AddCookie(cookie)
+				}
+				return req
 			},
 			expected: false,
 		},
