@@ -408,3 +408,60 @@ func TestTryScrapeInLanguages_NoLanguages(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no valid Wikipedia page found")
 }
+
+func TestStartScraping_WithSearchTerms(t *testing.T) {
+	// Create temp log file with search terms
+	logContent := `query="testterm" from=127.0.0.1
+query="golang" from=127.0.0.1`
+
+	tmpfile, err := createTempLogFile(logContent)
+	assert.NoError(t, err)
+	defer cleanupTempFile(tmpfile)
+
+	// Setup mock DB
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock alreadyProcessed queries - return true for both to skip them
+	mock.ExpectQuery("SELECT EXISTS \\(SELECT 1 FROM processed_searches WHERE search_term = \\$1\\)").
+		WithArgs("testterm").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	mock.ExpectQuery("SELECT EXISTS \\(SELECT 1 FROM processed_searches WHERE search_term = \\$1\\)").
+		WithArgs("golang").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	// Call StartScraping (should skip both terms since they're already processed)
+	StartScraping(tmpfile)
+
+	// Test passes if no panic
+	t.Log("Successfully processed search terms with alreadyProcessed check")
+}
+
+func TestAlreadyProcessed_QueryError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock query to return error
+	mock.ExpectQuery("SELECT EXISTS \\(SELECT 1 FROM processed_searches WHERE search_term = \\$1\\)").
+		WithArgs("test").
+		WillReturnError(assert.AnError)
+
+	result := alreadyProcessed("test")
+	// Should return false on error
+	assert.False(t, result)
+}
+
+func TestMarkAsProcessed_Error(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock INSERT to return error
+	mock.ExpectExec("INSERT INTO processed_searches \\(search_term\\) VALUES \\(\\$1\\) ON CONFLICT DO NOTHING").
+		WithArgs("test").
+		WillReturnError(assert.AnError)
+
+	// Call markAsProcessed (should not panic even on error)
+	markAsProcessed("test")
+
+	t.Log("Successfully handled markAsProcessed error")
+}
