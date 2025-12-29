@@ -29,7 +29,7 @@ func init() {
 
 	if err := godotenv.Load("../../.env.local"); err != nil {
 		// If .env.local doesn't exist, try regular .env
-		if err := godotenv.Load(); err != nil {
+		if godotenv.Load() != nil {
 			log.Println("No .env files found. Using environment variables.")
 		}
 	}

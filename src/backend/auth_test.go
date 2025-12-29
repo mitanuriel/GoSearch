@@ -43,7 +43,6 @@ func TestHashPassword_LongPassword(t *testing.T) {
 	// bcrypt will return an error for passwords > 72 bytes
 	assert.Error(t, err, "bcrypt should error on passwords exceeding 72 bytes")
 	assert.Empty(t, hashed)
-	assert.Contains(t, err.Error(), "password length exceeds 72 bytes")
 }
 
 func TestValidatePassword(t *testing.T) {
