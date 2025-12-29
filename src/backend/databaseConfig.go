@@ -103,61 +103,73 @@ func checkTables() {
 	}
 }
 
+// runCheckTables is a cron job handler for checking database tables
+func runCheckTables() {
+	fmt.Println("Cron job: Running checkTables at", time.Now())
+	checkTables()
+}
+
+// runDatabaseBackup is a cron job handler for database backup and cleanup
+func runDatabaseBackup() {
+	log.Println("Cron job: Running database backup at", time.Now())
+	backupDatabase()
+	cleanupOldBackups()
+}
+
+// runWikipediaScraper is a cron job handler for Wikipedia scraping
+func runWikipediaScraper() {
+	fmt.Println("Cron job: Running Wikipedia scraper at", time.Now())
+	logPath := os.Getenv("SEARCH_LOG_PATH")
+	if logPath == "" {
+		logPath = "search.log"
+	}
+	
+	// Track the number of pages before scraping
+	var countBefore int
+	err := db.QueryRow("SELECT COUNT(*) FROM pages").Scan(&countBefore)
+	if err != nil {
+		log.Printf("Error getting page count before scraping: %v", err)
+	}
+
+	// Run scraping
+	StartScraping(logPath)
+
+	// Check if new pages were added
+	var countAfter int
+	err = db.QueryRow("SELECT COUNT(*) FROM pages").Scan(&countAfter)
+	if err != nil {
+		log.Printf("Error getting page count after scraping: %v", err)
+	}
+
+	// Only sync to Elasticsearch if new pages were added
+	if countAfter > countBefore {
+		log.Printf("New pages added (%d -> %d). Syncing to Elasticsearch.", countBefore, countAfter)
+		err := syncPagesToElasticsearch()
+		if err != nil {
+			log.Printf("Error syncing to Elasticsearch: %v", err)
+		} else {
+			log.Println("Synced scraped pages to Elasticsearch successfully.")
+		}
+	} else {
+		log.Println("No new pages added. Skipping Elasticsearch sync.")
+	}
+}
+
 func startCronScheduler() {
 	c := cron.New()
+	
 	// Schedule the checkTables function to run every minute
-	if _, err := c.AddFunc("*/1 * * * *", func() {
-		fmt.Println("Cron job: Running checkTables at", time.Now())
-		checkTables()
-	}); err != nil {
+	if _, err := c.AddFunc("*/1 * * * *", runCheckTables); err != nil {
 		log.Fatalf("Error scheduling cron job: %v", err)
 	}
 
-	if _, err := c.AddFunc("0 2 * * *", func() {
-		log.Println("Cron job: Running database backup at", time.Now())
-		backupDatabase()
-		cleanupOldBackups()
-	}); err != nil {
+	// Schedule database backup to run daily at 2 AM
+	if _, err := c.AddFunc("0 2 * * *", runDatabaseBackup); err != nil {
 		log.Fatalf("Error scheduling backupDatabase cron job: %v", err)
 	}
 
-	// scraping wikipedia every 5. minutes
-	if _, err := c.AddFunc("*/5 * * * *", func() {
-		fmt.Println("Cron job: Running Wikipedia scraper at", time.Now())
-		logPath := os.Getenv("SEARCH_LOG_PATH")
-		if logPath == "" {
-			logPath = "search.log"
-		}
-		// Track the number of pages before scraping
-		var countBefore int
-		err := db.QueryRow("SELECT COUNT(*) FROM pages").Scan(&countBefore)
-		if err != nil {
-			log.Printf("Error getting page count before scraping: %v", err)
-		}
-
-		// Run scraping
-		StartScraping(logPath)
-
-		// Check if new pages were added
-		var countAfter int
-		err = db.QueryRow("SELECT COUNT(*) FROM pages").Scan(&countAfter)
-		if err != nil {
-			log.Printf("Error getting page count after scraping: %v", err)
-		}
-
-		// Only sync to Elasticsearch if new pages were added
-		if countAfter > countBefore {
-			log.Printf("New pages added (%d -> %d). Syncing to Elasticsearch.", countBefore, countAfter)
-			err := syncPagesToElasticsearch()
-			if err != nil {
-				log.Printf("Error syncing to Elasticsearch: %v", err)
-			} else {
-				log.Println("Synced scraped pages to Elasticsearch successfully.")
-			}
-		} else {
-			log.Println("No new pages added. Skipping Elasticsearch sync.")
-		}
-	}); err != nil {
+	// Schedule Wikipedia scraping every 5 minutes
+	if _, err := c.AddFunc("*/5 * * * *", runWikipediaScraper); err != nil {
 		log.Fatalf("Error scheduling Wikipedia scraper cron job: %v", err)
 	}
 
