@@ -48,7 +48,8 @@ func initElasticsearch() {
 				Password:  esPassword,
 				Transport: &http.Transport{
 					TLSClientConfig: &tls.Config{
-						InsecureSkipVerify: true, // nosemgrep: go.lang.security.audit.net.ssl.ssl-v3-is-insecure
+						InsecureSkipVerify: true,       // nosemgrep: go.lang.security.audit.net.ssl.ssl-v3-is-insecure
+						MinVersion:         tls.VersionTLS12, // Enforce TLS 1.2 minimum
 					},
 				},
 			},
