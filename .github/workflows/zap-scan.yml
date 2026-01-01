@@ -11,6 +11,8 @@ permissions:
   contents: read
   issues: write
   security-events: write
+  actions: read
+  id-token: write
 
 jobs:
   owasp-zap:
@@ -106,6 +108,7 @@ jobs:
         target: 'http://localhost:8080'
         cmd_options: '-a'  # Auto mode - passive scan only for quick results
         allow_issue_writing: false
+        artifact_name: 'zap-scan-results'  # Valid artifact name without underscores
       
     - name: Upload ZAP Report
     
