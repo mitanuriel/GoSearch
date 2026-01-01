@@ -25,7 +25,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := getTemplates()
 
 	if err != nil {
-		http.Error(w, "Error loading templates: "+err.Error(), http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Failed to load login templates")
 		return
 	}
 
@@ -36,8 +36,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
-		log.Printf("Error executing template: %v", err)
-		http.Error(w, "Error rendering template", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Failed to render login page")
 	}
 
 }
@@ -56,7 +55,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		delete(session.Values, "user_id")
 
 		if err := session.Save(r, w); err != nil {
-			http.Error(w, "Failed to save session", http.StatusInternalServerError)
+			handleInternalError(w, r, err, "Failed to save session during logout")
 			return
 		}
 	}
@@ -68,8 +67,7 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := loadTemplates("layout.html", "login.html")
 	if err != nil {
-		log.Printf("Template loading error: %v", err)
-		http.Error(w, "Error loading templates", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Failed to load login templates")
 		return
 	}
 
@@ -193,7 +191,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := template.ParseFiles(templatePath+"layout.html", templatePath+"register.html")
 	if err != nil {
-		http.Error(w, "Error loading register page", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Failed to load register templates")
 		return
 	}
 
@@ -205,8 +203,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
-		log.Printf("Error executing template: %v", err)
-		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Failed to render register page")
 	}
 }
 
@@ -218,7 +215,7 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err := r.ParseForm()
 	if err != nil {
-		http.Error(w, "Invalid data", http.StatusBadRequest)
+		handleBadRequest(w, r, "Invalid form data")
 		return
 	}
 
@@ -228,38 +225,38 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	password2 := r.FormValue("password2")
 
 	if username == "" {
-		http.Error(w, "You have to enter a username", http.StatusBadRequest)
+		handleBadRequest(w, r, "You have to enter a username")
 		return
 	}
 	if email == "" || !isValidEmail(email) {
-		http.Error(w, "You have to enter a valid email address", http.StatusBadRequest)
+		handleBadRequest(w, r, "You have to enter a valid email address")
 		return
 	}
 	if password == "" {
-		http.Error(w, "You have to enter a password", http.StatusBadRequest)
+		handleBadRequest(w, r, "You have to enter a password")
 		return
 	}
 	if password != password2 {
-		http.Error(w, "The two passwords do not match", http.StatusBadRequest)
+		handleBadRequest(w, r, "The two passwords do not match")
 		return
 	}
 
 	// Tjek for eksisterende brugernavn og email
 	usernameTaken, emailTaken := userExists(username, email)
 	if usernameTaken {
-		http.Error(w, "The username is already taken", http.StatusBadRequest)
+		handleBadRequest(w, r, "The username is already taken")
 		return
 	}
 
 	if emailTaken {
-		http.Error(w, "A user with this email already exists", http.StatusBadRequest)
+		handleBadRequest(w, r, "A user with this email already exists")
 		return
 	}
 
 	// Hash passwordet
 	hashedPassword, err := hashPassword(password)
 	if err != nil {
-		http.Error(w, "Error hashing password", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Error hashing password")
 		return
 	}
 
@@ -268,7 +265,7 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		username, email, hashedPassword).Scan(&userID)
 
 	if err != nil {
-		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Database error during user registration")
 		return
 	}
 
@@ -278,13 +275,13 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// Create session and log the user in
 	session, err := store.Get(r, "session-name")
 	if err != nil {
-		http.Error(w, "Session error", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Session error during registration")
 		return
 	}
 
 	session.Values["user_id"] = int(userID)
 	if err := session.Save(r, w); err != nil {
-		http.Error(w, "Session save error", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Session save error during registration")
 		return
 	}
 
