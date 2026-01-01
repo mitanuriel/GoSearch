@@ -2,13 +2,10 @@ name: OWASP ZAP Security Scan
 
 on:
   push:
-    branches:
-      - main
-      - develop
+  
   pull_request:
-    branches:
-      - main
-      - develop
+  
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -34,6 +31,19 @@ jobs:
         ports:
           - 5432:5432
 
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: false
+        options: >-
+          --health-cmd="curl -f http://localhost:9200/_cluster/health || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        ports:
+          - 9200:9200
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -41,53 +51,30 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: '1.21'
 
     - name: Install dependencies
+      working-directory: ./src/backend
       run: |
-        cd src/backend
+        go mod tidy
         go mod download
-        go mod verify
 
-    - name: Build Go application
+    - name: Set environment variables
       run: |
-        cd src/backend
-        go build -o gosearch .
+        echo "CONN_STR=host=localhost port=5432 user=postgres password=testpass dbname=gosearch_test sslmode=disable" >> $GITHUB_ENV
+        echo "PORT=8080" >> $GITHUB_ENV
+        echo "SESSION_SECRET=test-session-secret-for-zap-scanning-only" >> $GITHUB_ENV
+        echo "ES_HOST=localhost" >> $GITHUB_ENV
+        echo "ES_USERNAME=elastic" >> $GITHUB_ENV
+        echo "ES_PASSWORD=changeme" >> $GITHUB_ENV
 
-    - name: Start the application
+    - name: Run the application
       run: |
-        cd src/backend
-        # Set environment variables for the app
-        export CONN_STR="host=localhost port=5432 user=postgres password=testpass dbname=gosearch_test sslmode=disable"
-        export PORT=8080
-        export SESSION_SECRET="test-session-secret-for-zap-scanning-only-not-production"
-        # Disable Elasticsearch to avoid connection issues in test environment
-        export ES_HOST=""
-        # Start the application in background
-        nohup ./gosearch > app.log 2>&1 &
-        APP_PID=$!
-        echo "Started app with PID: $APP_PID"
-        # Wait for app to be ready
-        for i in {1..30}; do
-          if curl -s http://localhost:8080 > /dev/null; then
-            echo "Application is ready!"
-            break
-          fi
-          echo "Waiting for application to start... ($i/30)"
-          sleep 2
-        done
-        # Show app logs if it failed to start
-        if ! curl -s http://localhost:8080 > /dev/null; then
-          echo "Application failed to start. Logs:"
-          cat app.log
-          exit 1
-        fi
-      
-    - name: Verify application is running
+        go run ./src/backend/. & sleep 20
+
+    - name: Ensure the application is running
       run: |
-        echo "Testing application endpoints..."
-        curl -v http://localhost:8080 || exit 1
-        echo "Application is responding correctly!"
+        curl --retry 5 --retry-connrefused --retry-delay 5 http://localhost:8080
 
     - name: ZAP Baseline Scan
       uses: zaproxy/action-baseline@v0.12.0
@@ -95,7 +82,7 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         target: 'http://localhost:8080'
         cmd_options: '-a'  # Auto mode - passive scan only for quick results
-        allow_issue_writing: true
+        allow_issue_writing: false
       
     - name: Upload ZAP Report
     
