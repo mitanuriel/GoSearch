@@ -15,7 +15,7 @@ import (
 
 func TestGetTemplates(t *testing.T) {
 	tmpl, err := getTemplates()
-	
+
 	// Templates might not exist in test environment, so we just check the error handling
 	if err != nil {
 		assert.Error(t, err)
@@ -59,7 +59,7 @@ func TestLoadTemplates(t *testing.T) {
 func TestApiRegisterHandler_InvalidRequests(t *testing.T) {
 	mockDB, _ := setupMockDB()
 	defer func() { _ = mockDB.Close() }()
-	
+
 	mockStore := sessions.NewCookieStore([]byte("test-secret"))
 	store = mockStore
 
@@ -579,7 +579,7 @@ func TestApiLogin_ParseFormError(t *testing.T) {
 	// Set an invalid body that causes ParseForm error
 	req.Body = nil
 	req.PostForm = nil
-	
+
 	w := httptest.NewRecorder()
 
 	apiLogin(w, req)

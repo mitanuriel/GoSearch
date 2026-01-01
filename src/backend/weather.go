@@ -84,12 +84,11 @@ func weatherHandler(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := template.ParseFiles(templatePath+"layout.html", templatePath+"weather.html")
 	if err != nil {
-		http.Error(w, "Error loading weather page", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Failed to load weather templates")
 		return
 	}
 
 	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
-		log.Printf("Error executing template: %v", err)
-		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Failed to render weather page")
 	}
 }

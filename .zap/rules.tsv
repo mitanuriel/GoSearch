@@ -1,0 +1,22 @@
+# ZAP Scanning Rules
+# Use the following format:
+# <ruleId>	IGNORE	(reason)
+# <ruleId>	WARN	(reason)
+# <ruleId>	FAIL	(reason)
+# <ruleId>	INFO	(reason)
+# <ruleId>	IGNORE	(Until date in format yyyy-mm-dd)
+
+# Ignore development-specific alerts
+10096	IGNORE	(Timestamp Disclosure - Unix - Development environment)
+10015	IGNORE	(Incomplete or No Cache-control Header Set - Development mode)
+
+# Warn on medium severity issues
+10021	WARN	(X-Content-Type-Options Header Missing)
+10020	WARN	(X-Frame-Options Header Not Set)
+10038	WARN	(Content Security Policy (CSP) Header Not Set)
+
+# Fail on high severity issues
+40012	FAIL	(Cross Site Scripting (Reflected))
+40014	FAIL	(Cross Site Scripting (Persistent))
+40018	FAIL	(SQL Injection)
+90020	FAIL	(Remote OS Command Injection)

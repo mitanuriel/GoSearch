@@ -77,7 +77,7 @@ func TestSetupPasswordResetTable_ColumnCheckError(t *testing.T) {
 	defer func() { _ = mockDB.Close() }()
 
 	// Skip ping (it's not monitored by default in sqlmock)
-	
+
 	// Mock column existence check to return error
 	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
 		WillReturnError(assert.AnError)
@@ -609,7 +609,7 @@ func TestApiResetPasswordHandler_HashPasswordError(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		longPassword += "a"
 	}
-	
+
 	form := url.Values{
 		"current_password": {"oldpassword"},
 		"new_password":     {longPassword},
@@ -652,7 +652,7 @@ func TestApiResetPasswordHandler_DatabaseUpdateError(t *testing.T) {
 
 	// Create new request with session cookie
 	cookies := w.Result().Cookies()
-	
+
 	form := url.Values{
 		"current_password": {"oldpassword"},
 		"new_password":     {"newpassword123"},
@@ -692,7 +692,7 @@ func TestCheckPasswordResetRequired_QueryError(t *testing.T) {
 		WillReturnError(assert.AnError)
 
 	required := checkPasswordResetRequired(1)
-	
+
 	// Should return false on error
 	assert.False(t, required)
 }

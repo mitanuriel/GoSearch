@@ -17,7 +17,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
 	queryParam := strings.TrimSpace(r.URL.Query().Get("q"))
 	if queryParam == "" {
-		http.Error(w, "No search query provided", http.StatusBadRequest)
+		handleBadRequest(w, r, "Please provide a search query")
 		return
 	}
 	//TO LOG THE QUERY//
@@ -27,8 +27,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	//Nuild search against Elasticsearch
 	pages, err := searchPagesInEs(queryParam)
 	if err != nil {
-		log.Printf("Error searching Elasticsearch: %v", err)
-		http.Error(w, "Error during search", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Elasticsearch search failed")
 		return
 	}
 
@@ -44,8 +43,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := template.ParseFiles(templatePath+"layout.html", templatePath+"search.html")
 	if err != nil {
-		log.Printf("Error parsing search templates: %v", err)
-		http.Error(w, "Error loading search template", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Failed to load search templates")
 		return
 	}
 
@@ -55,8 +53,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
-		log.Printf("Error executing search template: %v", err)
-		http.Error(w, "Error rendering search results", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Failed to render search results")
 	}
 }
 

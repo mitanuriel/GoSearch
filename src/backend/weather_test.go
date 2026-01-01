@@ -109,7 +109,7 @@ func TestFetchWeatherData_WithAPIKey(t *testing.T) {
 
 	// Test with real API key
 	weatherData, err := fetchWeatherData("Copenhagen")
-	
+
 	// Should succeed with valid API key
 	assert.NoError(t, err)
 	assert.NotNil(t, weatherData)
@@ -128,7 +128,7 @@ func TestFetchWeatherData_InvalidCity(t *testing.T) {
 
 	// Test with invalid city name
 	_, err := fetchWeatherData("InvalidCityNameThatDoesNotExist12345")
-	
+
 	// Should return error for invalid city
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "weather API returned status")
