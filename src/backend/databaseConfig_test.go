@@ -66,7 +66,7 @@ func TestCleanupOldBackups(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir) // Clean up temp directory after test
+	defer func() { _ = os.RemoveAll(tempDir) }() // Clean up temp directory after test
 
 	// Create backups subdirectory inside temp
 	backupsDir := filepath.Join(tempDir, "backups")
@@ -78,7 +78,7 @@ func TestCleanupOldBackups(t *testing.T) {
 	oldFile := filepath.Join(backupsDir, "old_backup.sql")
 	f, err := os.Create(oldFile)
 	assert.NoError(t, err)
-	f.Close()
+	_ = f.Close()
 	oldTime := time.Now().AddDate(0, 0, -10)
 	assert.NoError(t, os.Chtimes(oldFile, oldTime, oldTime))
 
@@ -86,7 +86,7 @@ func TestCleanupOldBackups(t *testing.T) {
 	recentFile := filepath.Join(backupsDir, "recent_backup.sql")
 	f2, err := os.Create(recentFile)
 	assert.NoError(t, err)
-	f2.Close()
+	_ = f2.Close()
 
 	// Since cleanupOldBackups uses a hard-coded path, we need to test the logic
 	// by simulating what the function does on our temp directory

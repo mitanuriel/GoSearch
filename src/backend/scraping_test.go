@@ -382,8 +382,8 @@ func TestStartScraping_NoSearchTerms(t *testing.T) {
 	// Create empty log file
 	tmpfile, err := os.CreateTemp("", "test-search-*.log")
 	assert.NoError(t, err)
-	defer os.Remove(tmpfile.Name())
-	tmpfile.Close()
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
+	_ = tmpfile.Close()
 
 	// Call StartScraping (should handle empty gracefully)
 	StartScraping(tmpfile.Name())
