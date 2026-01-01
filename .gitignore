@@ -10,6 +10,9 @@
 # Test binary, built with `go test -c`
 *.test
 
+# Go compiled binaries (executable files, not directories)
+/src/backend/backend
+
 # All enverironment variables
 secrets/
 .env
