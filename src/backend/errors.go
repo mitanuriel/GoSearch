@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"runtime/debug"
@@ -18,24 +19,86 @@ func handleError(w http.ResponseWriter, r *http.Request, err error, statusCode i
 	log.Printf("[ERROR] %s %s - Status: %d - Error: %v - User-Agent: %s - IP: %s",
 		r.Method, r.URL.Path, statusCode, err, r.UserAgent(), r.RemoteAddr)
 
-	// Send generic message to client (no internal details exposed)
-	http.Error(w, userMessage, statusCode)
+	// Send custom HTML error page instead of plain text
+	w.WriteHeader(statusCode)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = fmt.Fprintf(w, `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - GoSearch</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+            color: #333;
+        }
+        .error-container {
+            background: white;
+            padding: 3rem;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 500px;
+        }
+        h1 {
+            color: #667eea;
+            font-size: 2.5rem;
+            margin: 0 0 1rem 0;
+        }
+        p {
+            color: #666;
+            font-size: 1.1rem;
+            margin: 1rem 0;
+            line-height: 1.6;
+        }
+        .home-link {
+            display: inline-block;
+            margin-top: 2rem;
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+        }
+        .home-link:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1>Oops!</h1>
+        <p>%s</p>
+        <a href="/" class="home-link">← Back to Home</a>
+    </div>
+</body>
+</html>`, userMessage)
 }
 
 // handleInternalError is a helper for 500 errors
 func handleInternalError(w http.ResponseWriter, r *http.Request, err error, context string) {
-	handleError(w, r, err, http.StatusInternalServerError,
-		"An unexpected error occurred. Please try again later.")
-
 	// Additional server-side logging with context
 	log.Printf("[INTERNAL ERROR] Context: %s - Error: %v", context, err)
+	
+	handleError(w, r, err, http.StatusInternalServerError,
+		"An unexpected error occurred. Please try again later.")
 }
 
 // handleBadRequest is a helper for 400 errors
 func handleBadRequest(w http.ResponseWriter, r *http.Request, userMessage string) {
 	log.Printf("[BAD REQUEST] %s %s - Message: %s - User-Agent: %s",
 		r.Method, r.URL.Path, userMessage, r.UserAgent())
-	http.Error(w, userMessage, http.StatusBadRequest)
+	handleError(w, r, nil, http.StatusBadRequest, userMessage)
 }
 
 // recoveryMiddleware catches panics and returns a 500 error instead of crashing
@@ -47,9 +110,9 @@ func recoveryMiddleware(next http.Handler) http.Handler {
 				log.Printf("[PANIC RECOVERED] %s %s - Panic: %v\nStack Trace:\n%s",
 					r.Method, r.URL.Path, err, debug.Stack())
 
-				// Send generic error to client (don't expose panic details)
-				http.Error(w, "An unexpected error occurred. Please try again later.",
-					http.StatusInternalServerError)
+				// Send custom error page
+				handleError(w, r, fmt.Errorf("%v", err), http.StatusInternalServerError,
+					"An unexpected error occurred. Please try again later.")
 			}
 		}()
 

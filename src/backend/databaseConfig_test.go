@@ -109,10 +109,10 @@ func TestCleanupOldBackups(t *testing.T) {
 	// Verify: old file should be removed, recent should remain
 	_, err = os.Stat(oldFile)
 	assert.True(t, os.IsNotExist(err), "Old file should be deleted")
-	
+
 	_, err = os.Stat(recentFile)
 	assert.NoError(t, err, "Recent file should still exist")
-	
+
 	t.Log("Cleanup test completed successfully with isolated temp directory")
 }
 

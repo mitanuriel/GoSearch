@@ -46,3 +46,4 @@ node_modules/
 /src/backend/backups/
 
 VM-Gosearch_key.pem
+gosearch
