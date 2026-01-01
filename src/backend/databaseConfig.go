@@ -103,65 +103,167 @@ func checkTables() {
 	}
 }
 
+// runCheckTables is a cron job handler for checking database tables
+func runCheckTables() {
+	fmt.Println("Cron job: Running checkTables at", time.Now())
+	checkTables()
+}
+
+// runDatabaseBackup is a cron job handler for database backup and cleanup
+func runDatabaseBackup() {
+	log.Println("Cron job: Running database backup at", time.Now())
+	backupDatabase()
+	cleanupOldBackups()
+}
+
+// runWikipediaScraper is a cron job handler for Wikipedia scraping
+func runWikipediaScraper() {
+	fmt.Println("Cron job: Running Wikipedia scraper at", time.Now())
+	logPath := os.Getenv("SEARCH_LOG_PATH")
+	if logPath == "" {
+		logPath = "search.log"
+	}
+	
+	// Track the number of pages before scraping
+	var countBefore int
+	err := db.QueryRow("SELECT COUNT(*) FROM pages").Scan(&countBefore)
+	if err != nil {
+		log.Printf("Error getting page count before scraping: %v", err)
+	}
+
+	// Run scraping
+	StartScraping(logPath)
+
+	// Check if new pages were added
+	var countAfter int
+	err = db.QueryRow("SELECT COUNT(*) FROM pages").Scan(&countAfter)
+	if err != nil {
+		log.Printf("Error getting page count after scraping: %v", err)
+	}
+
+	// Only sync to Elasticsearch if new pages were added
+	if countAfter > countBefore {
+		log.Printf("New pages added (%d -> %d). Syncing to Elasticsearch.", countBefore, countAfter)
+		err := syncPagesToElasticsearch()
+		if err != nil {
+			log.Printf("Error syncing to Elasticsearch: %v", err)
+		} else {
+			log.Println("Synced scraped pages to Elasticsearch successfully.")
+		}
+	} else {
+		log.Println("No new pages added. Skipping Elasticsearch sync.")
+	}
+}
+
 func startCronScheduler() {
 	c := cron.New()
+	
 	// Schedule the checkTables function to run every minute
-	if _, err := c.AddFunc("*/1 * * * *", func() {
-		fmt.Println("Cron job: Running checkTables at", time.Now())
-		checkTables()
-	}); err != nil {
+	if _, err := c.AddFunc("*/1 * * * *", runCheckTables); err != nil {
 		log.Fatalf("Error scheduling cron job: %v", err)
 	}
 
-	if _, err := c.AddFunc("0 2 * * *", func() {
-		log.Println("Cron job: Running database backup at", time.Now())
-		backupDatabase()
-		cleanupOldBackups()
-	}); err != nil {
+	// Schedule database backup to run daily at 2 AM
+	if _, err := c.AddFunc("0 2 * * *", runDatabaseBackup); err != nil {
 		log.Fatalf("Error scheduling backupDatabase cron job: %v", err)
 	}
 
-	// scraping wikipedia every 5. minutes
-	if _, err := c.AddFunc("*/5 * * * *", func() {
-		fmt.Println("Cron job: Running Wikipedia scraper at", time.Now())
-		logPath := os.Getenv("SEARCH_LOG_PATH")
-		if logPath == "" {
-			logPath = "search.log"
-		}
-		// Track the number of pages before scraping
-		var countBefore int
-		err := db.QueryRow("SELECT COUNT(*) FROM pages").Scan(&countBefore)
-		if err != nil {
-			log.Printf("Error getting page count before scraping: %v", err)
-		}
-
-		// Run scraping
-		StartScraping(logPath)
-
-		// Check if new pages were added
-		var countAfter int
-		err = db.QueryRow("SELECT COUNT(*) FROM pages").Scan(&countAfter)
-		if err != nil {
-			log.Printf("Error getting page count after scraping: %v", err)
-		}
-
-		// Only sync to Elasticsearch if new pages were added
-		if countAfter > countBefore {
-			log.Printf("New pages added (%d -> %d). Syncing to Elasticsearch.", countBefore, countAfter)
-			err := syncPagesToElasticsearch()
-			if err != nil {
-				log.Printf("Error syncing to Elasticsearch: %v", err)
-			} else {
-				log.Println("Synced scraped pages to Elasticsearch successfully.")
-			}
-		} else {
-			log.Println("No new pages added. Skipping Elasticsearch sync.")
-		}
-	}); err != nil {
+	// Schedule Wikipedia scraping every 5 minutes
+	if _, err := c.AddFunc("*/5 * * * *", runWikipediaScraper); err != nil {
 		log.Fatalf("Error scheduling Wikipedia scraper cron job: %v", err)
 	}
 
 	c.Start()
+}
+
+// parseConnectionString extracts database connection parameters from connection string
+func parseConnectionString(connStr string) (host, port, user, password, dbname string, err error) {
+	// Try parsing the URL format first
+	if connURL, parseErr := url.Parse(connStr); parseErr == nil && connURL.Scheme == "postgres" {
+		// Format: postgres://username:password@host:port/dbname
+		host = connURL.Hostname()
+		port = connURL.Port()
+		if port == "" {
+			port = "5432" // Default PostgreSQL port
+		}
+		user = connURL.User.Username()
+		password, _ = connURL.User.Password()
+		dbname = strings.TrimPrefix(connURL.Path, "/")
+		return host, port, user, password, dbname, nil
+	}
+
+	// Format: host=localhost port=5432 user=postgres password=secret dbname=mydb
+	params := make(map[string]string)
+	parts := strings.Fields(connStr)
+	for _, part := range parts {
+		kv := strings.SplitN(part, "=", 2)
+		if len(kv) == 2 {
+			params[strings.ToLower(kv[0])] = kv[1]
+		}
+	}
+
+	host = params["host"]
+	port = params["port"]
+	if port == "" {
+		port = "5432"
+	}
+	user = params["user"]
+	password = params["password"]
+	dbname = params["dbname"]
+
+	return host, port, user, password, dbname, nil
+}
+
+// executePgDump runs pg_dump command and creates backup file
+func executePgDump(host, port, user, password, dbname, outputFile string) error {
+	// Check if pg_dump is available
+	pgDumpPath, err := exec.LookPath("pg_dump")
+	if err != nil {
+		return fmt.Errorf("pg_dump not found in PATH: %w", err)
+	}
+	log.Printf("Using pg_dump from: %s", pgDumpPath)
+
+	// Create the pg_dump command
+	cmd := exec.Command(pgDumpPath,
+		"-h", host,
+		"-p", port,
+		"-U", user,
+		"-F", "c", // Custom format
+		"-b",      // Include large objects
+		"-v",      // Verbose
+		"-f", outputFile,
+		dbname)
+
+	// Set PGPASSWORD environment variable
+	cmd.Env = append(os.Environ(), "PGPASSWORD="+password)
+
+	// Run the command and capture output
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("backup failed: %v\nCommand output: %s", err, string(output))
+	}
+
+	return nil
+}
+
+// verifyBackupFile checks if backup file was created and reports its size
+func verifyBackupFile(outputFile string) error {
+	// Check if the file was actually created
+	fileInfo, err := os.Stat(outputFile)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("backup file not created: %s", outputFile)
+	}
+	if err != nil {
+		return fmt.Errorf("error getting backup file info: %w", err)
+	}
+	
+	if fileInfo.Size() == 0 {
+		log.Printf("Warning: Backup file is empty: %s", outputFile)
+	} else {
+		log.Printf("Backup successful: %s (%.2f MB)", outputFile, float64(fileInfo.Size())/1024/1024)
+	}
+	
+	return nil
 }
 
 func backupDatabase() {
@@ -175,47 +277,11 @@ func backupDatabase() {
 	timestamp := time.Now().Format("20060102_150405")
 	outputFile := filepath.Join(backupDir, fmt.Sprintf("backup_%s.sql", timestamp))
 
-	// Use the connection string that's already been loaded in config.go
-	// We need to parse it to extract the individual pieces for pg_dump
-
 	log.Printf("Using connection string: %s", CONN_STR)
 
-	var dbHost, dbPort, dbUser, dbName, dbPassword string
-
-	// Try parsing the URL format
-	if connURL, err := url.Parse(CONN_STR); err == nil && connURL.Scheme == "postgres" {
-		// Format: postgres://username:password@host:port/dbname
-		dbHost = connURL.Hostname()
-		dbPort = connURL.Port()
-		if dbPort == "" {
-			dbPort = "5432" // Default PostgreSQL port
-		}
-		dbUser = connURL.User.Username()
-		dbPassword, _ = connURL.User.Password()
-		dbName = strings.TrimPrefix(connURL.Path, "/")
-	} else {
-		// Format: host=localhost port=5432 user=postgres password=secret dbname=mydb
-		params := make(map[string]string)
-		parts := strings.Fields(CONN_STR)
-		for _, part := range parts {
-			kv := strings.SplitN(part, "=", 2)
-			if len(kv) == 2 {
-				params[strings.ToLower(kv[0])] = kv[1]
-			}
-		}
-
-		dbHost = params["host"]
-		dbPort = params["port"]
-		if dbPort == "" {
-			dbPort = "5432" // Default PostgreSQL port
-		}
-		dbUser = params["user"]
-		dbPassword = params["password"]
-		dbName = params["dbname"]
-	}
-
-	// Validate that we have the required connection parameters
-	if dbHost == "" || dbUser == "" || dbName == "" {
+	// Parse connection string
+	dbHost, dbPort, dbUser, dbPassword, dbName, err := parseConnectionString(CONN_STR)
+	if err != nil || dbHost == "" || dbUser == "" || dbName == "" {
 		log.Printf("Backup failed: Couldn't extract required database parameters from connection string")
 		log.Printf("Host: %s, User: %s, DB Name: %s", dbHost, dbUser, dbName)
 		return
@@ -224,51 +290,15 @@ func backupDatabase() {
 	log.Printf("Extracted database parameters - Host: %s, Port: %s, User: %s, DB: %s",
 		dbHost, dbPort, dbUser, dbName)
 
-	// Check if pg_dump is available
-	pgDumpPath, err := exec.LookPath("pg_dump")
-	if err != nil {
-		log.Printf("pg_dump not found in PATH: %v", err)
-		log.Printf("Please install PostgreSQL client tools")
-		return
-	}
-	log.Printf("Using pg_dump from: %s", pgDumpPath)
-
-	// Create the pg_dump command
-	cmd := exec.Command(pgDumpPath,
-		"-h", dbHost,
-		"-p", dbPort,
-		"-U", dbUser,
-		"-F", "c", // Custom format
-		"-b", // Include large objects
-		"-v", // Verbose
-		"-f", outputFile,
-		dbName)
-
-	// Set PGPASSWORD environment variable
-	cmd.Env = append(os.Environ(), "PGPASSWORD="+dbPassword)
-
-	// Run the command and capture output
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Printf("Backup failed: %v\nCommand output: %s", err, string(output))
+	// Execute pg_dump
+	if err := executePgDump(dbHost, dbPort, dbUser, dbPassword, dbName, outputFile); err != nil {
+		log.Printf("%v", err)
 		return
 	}
 
-	// Check if the file was actually created
-	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-		log.Printf("Backup command succeeded but output file not created: %s", outputFile)
-		log.Printf("Command output: %s", string(output))
-		return
-	}
-
-	// Get file size
-	fileInfo, err := os.Stat(outputFile)
-	if err != nil {
-		log.Printf("Error getting backup file info: %v", err)
-	} else if fileInfo.Size() == 0 {
-		log.Printf("Warning: Backup file is empty: %s", outputFile)
-	} else {
-		log.Printf("Backup successful: %s (%.2f MB)", outputFile, float64(fileInfo.Size())/1024/1024)
+	// Verify backup file was created successfully
+	if err := verifyBackupFile(outputFile); err != nil {
+		log.Printf("%v", err)
 	}
 }
 
