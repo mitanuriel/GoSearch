@@ -49,8 +49,8 @@ func TestSecurityHeadersMiddleware_Development(t *testing.T) {
 	csp := rec.Header().Get("Content-Security-Policy")
 	assert.NotEmpty(t, csp, "Content-Security-Policy header should be set")
 	assert.Contains(t, csp, "default-src 'self'")
-	assert.Contains(t, csp, "script-src 'self' 'unsafe-inline'")
-	assert.Contains(t, csp, "style-src 'self' 'unsafe-inline'")
+	assert.Contains(t, csp, "script-src 'self'")
+	assert.Contains(t, csp, "style-src 'self'")
 	assert.Contains(t, csp, "frame-ancestors 'none'")
 
 	// Check X-Content-Type-Options
@@ -254,11 +254,12 @@ func TestSecurityHeadersMiddleware_CSPDirectives(t *testing.T) {
 		expected  string
 	}{
 		{"default-src", "default-src 'self'"},
-		{"script-src", "script-src 'self' 'unsafe-inline'"},
-		{"style-src", "style-src 'self' 'unsafe-inline'"},
-		{"img-src", "img-src 'self' data: https:"},
+		{"script-src", "script-src 'self'"},
+		{"style-src", "style-src 'self'"},
+		{"img-src", "img-src 'self' data: https://api.openweathermap.org"},
 		{"font-src", "font-src 'self'"},
-		{"connect-src", "connect-src 'self'"},
+		{"connect-src", "connect-src 'self' https://api.openweathermap.org"},
+		{"form-action", "form-action 'self'"},
 		{"frame-ancestors", "frame-ancestors 'none'"},
 	}
 

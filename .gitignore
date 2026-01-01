@@ -42,6 +42,9 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 
+# Jest coverage
+coverage-js/
+
 #backup
 /src/backend/backups/
 

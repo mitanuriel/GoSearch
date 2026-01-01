@@ -106,11 +106,11 @@ func handleBadRequest(w http.ResponseWriter, r *http.Request, userMessage string
 func securityHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Content Security Policy - prevent XSS and data injection attacks
-		// 'unsafe-inline' is needed for inline styles/scripts in our templates
+		// All scripts and styles are now external (no unsafe-inline needed)
 		w.Header().Set("Content-Security-Policy",
 			"default-src 'self'; "+
-				"script-src 'self' 'unsafe-inline'; "+
-				"style-src 'self' 'unsafe-inline'; "+
+				"script-src 'self'; "+
+				"style-src 'self'; "+
 				"img-src 'self' data: https://api.openweathermap.org; "+
 				"font-src 'self'; "+
 				"connect-src 'self' https://api.openweathermap.org; "+
@@ -128,6 +128,18 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 
 		// Enable XSS protection (for older browsers)
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
+
+		// Permissions Policy - restrict browser features to prevent misuse
+		// Deny access to camera, microphone, geolocation, and other sensitive features
+		w.Header().Set("Permissions-Policy",
+			"camera=(), "+
+				"microphone=(), "+
+				"geolocation=(), "+
+				"payment=(), "+
+				"usb=(), "+
+				"magnetometer=(), "+
+				"gyroscope=(), "+
+				"accelerometer=()")
 
 		// Only enforce HTTPS in production (not for local development)
 		if os.Getenv("APP_ENV") == "production" {
