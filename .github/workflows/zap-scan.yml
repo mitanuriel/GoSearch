@@ -60,6 +60,7 @@ jobs:
         # Set environment variables for the app
         export CONN_STR="host=localhost port=5432 user=postgres password=testpass dbname=gosearch_test sslmode=disable"
         export PORT=8080
+        export SESSION_SECRET="test-session-secret-for-zap-scanning-only-not-production"
         # Disable Elasticsearch to avoid connection issues in test environment
         export ES_HOST=""
         # Start the application in background
