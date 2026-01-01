@@ -93,6 +93,8 @@ func main() {
 	///Opretter en ny router
 	r := mux.NewRouter()
 
+	// Add security headers middleware first (applies to all routes)
+	r.Use(securityHeadersMiddleware)
 	// Add recovery middleware to catch panics
 	r.Use(recoveryMiddleware)
 	r.Use(passwordResetMiddleware)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"runtime/debug"
 )
 
@@ -99,6 +100,41 @@ func handleBadRequest(w http.ResponseWriter, r *http.Request, userMessage string
 	log.Printf("[BAD REQUEST] %s %s - Message: %s - User-Agent: %s",
 		r.Method, r.URL.Path, userMessage, r.UserAgent())
 	handleError(w, r, nil, http.StatusBadRequest, userMessage)
+}
+
+// securityHeadersMiddleware adds security headers to all responses
+func securityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Content Security Policy - prevent XSS and data injection attacks
+		// 'unsafe-inline' is needed for inline styles/scripts in our templates
+		w.Header().Set("Content-Security-Policy",
+			"default-src 'self'; "+
+				"script-src 'self' 'unsafe-inline'; "+
+				"style-src 'self' 'unsafe-inline'; "+
+				"img-src 'self' data: https:; "+
+				"font-src 'self'; "+
+				"connect-src 'self'; "+
+				"frame-ancestors 'none'")
+
+		// Prevent MIME-sniffing attacks
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+
+		// Prevent clickjacking attacks
+		w.Header().Set("X-Frame-Options", "DENY")
+
+		// Control referrer information leakage
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+
+		// Enable XSS protection (for older browsers)
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+
+		// Only enforce HTTPS in production (not for local development)
+		if os.Getenv("APP_ENV") == "production" {
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 // recoveryMiddleware catches panics and returns a 500 error instead of crashing

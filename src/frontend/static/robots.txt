@@ -4,4 +4,4 @@ Allow: /
 Disallow: /api/
 Disallow: /static/
 
-Sitemap: http://localhost:8080/sitemap.xml
+Sitemap: https://gosearch1.dk/sitemap.xml
