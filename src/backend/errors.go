@@ -111,9 +111,10 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 			"default-src 'self'; "+
 				"script-src 'self' 'unsafe-inline'; "+
 				"style-src 'self' 'unsafe-inline'; "+
-				"img-src 'self' data: https:; "+
+				"img-src 'self' data: https://api.openweathermap.org; "+
 				"font-src 'self'; "+
-				"connect-src 'self'; "+
+				"connect-src 'self' https://api.openweathermap.org; "+
+				"form-action 'self'; "+
 				"frame-ancestors 'none'")
 
 		// Prevent MIME-sniffing attacks
