@@ -1,0 +1,7 @@
+# robots.txt for GoSearch
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /static/
+
+Sitemap: https://gosearch1.dk/sitemap.xml

@@ -14,13 +14,13 @@ import (
 
 func TestHashPassword(t *testing.T) {
 	password := "testPassword123"
-	
+
 	hashed, err := hashPassword(password)
-	
+
 	assert.NoError(t, err)
 	assert.NotEmpty(t, hashed)
 	assert.NotEqual(t, password, hashed, "Hashed password should not match plain password")
-	
+
 	// Verify the hashed password can be validated
 	err = bcrypt.CompareHashAndPassword([]byte(hashed), []byte(password))
 	assert.NoError(t, err, "Hashed password should validate against original")
@@ -89,12 +89,12 @@ func TestUserExists(t *testing.T) {
 	defer func() { _ = mockDB.Close() }()
 
 	tests := []struct {
-		name              string
-		username          string
-		email             string
-		setupMock         func()
-		expectedUsername  bool
-		expectedEmail     bool
+		name             string
+		username         string
+		email            string
+		setupMock        func()
+		expectedUsername bool
+		expectedEmail    bool
 	}{
 		{
 			name:     "Both username and email exist",

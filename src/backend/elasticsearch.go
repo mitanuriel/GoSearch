@@ -29,7 +29,7 @@ func initElasticsearch() {
 	if esUsername == "" {
 		esUsername = "elastic" // Default for local development only
 	}
-	
+
 	// Allow disabling TLS verification for development (default: false for security)
 	insecureSkipVerify := os.Getenv("ES_INSECURE_SKIP_VERIFY") == "true"
 	if insecureSkipVerify {

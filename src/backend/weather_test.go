@@ -92,8 +92,8 @@ func TestWeatherHandler_TemplateError(t *testing.T) {
 func TestFetchWeatherData_MissingAPIKey(t *testing.T) {
 	// Save original and unset API key
 	originalKey := os.Getenv("OPENWEATHER_API_KEY")
-	os.Unsetenv("OPENWEATHER_API_KEY")
-	defer os.Setenv("OPENWEATHER_API_KEY", originalKey)
+	_ = os.Unsetenv("OPENWEATHER_API_KEY")
+	defer func() { _ = os.Setenv("OPENWEATHER_API_KEY", originalKey) }()
 
 	_, err := fetchWeatherData("Copenhagen")
 	assert.Error(t, err)
@@ -109,7 +109,7 @@ func TestFetchWeatherData_WithAPIKey(t *testing.T) {
 
 	// Test with real API key
 	weatherData, err := fetchWeatherData("Copenhagen")
-	
+
 	// Should succeed with valid API key
 	assert.NoError(t, err)
 	assert.NotNil(t, weatherData)
@@ -128,7 +128,7 @@ func TestFetchWeatherData_InvalidCity(t *testing.T) {
 
 	// Test with invalid city name
 	_, err := fetchWeatherData("InvalidCityNameThatDoesNotExist12345")
-	
+
 	// Should return error for invalid city
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "weather API returned status")

@@ -263,10 +263,10 @@ func TestScrapeWikipedia_InvalidDomain(t *testing.T) {
 func TestScrapeWikipedia_URLFormat(t *testing.T) {
 	// Test that the function accepts properly formatted URLs
 	// We can't actually scrape without a real server, but we can verify the function signature works
-	
-	testCases := []struct{
+
+	testCases := []struct {
 		name string
-		url string
+		url  string
 		lang string
 	}{
 		{"English", "https://en.wikipedia.org/wiki/Go_(programming_language)", "en"},
@@ -279,7 +279,7 @@ func TestScrapeWikipedia_URLFormat(t *testing.T) {
 			// Note: This will make actual HTTP requests to Wikipedia
 			// In a real test environment, you might want to skip these or use VCR/recording
 			page, err := scrapeWikipedia(tc.url, tc.lang)
-			
+
 			// We expect these to succeed (or fail gracefully if Wikipedia is down)
 			if err != nil {
 				t.Logf("Scraping %s failed (may be network issue): %v", tc.url, err)
@@ -382,8 +382,8 @@ func TestStartScraping_NoSearchTerms(t *testing.T) {
 	// Create empty log file
 	tmpfile, err := os.CreateTemp("", "test-search-*.log")
 	assert.NoError(t, err)
-	defer os.Remove(tmpfile.Name())
-	tmpfile.Close()
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
+	_ = tmpfile.Close()
 
 	// Call StartScraping (should handle empty gracefully)
 	StartScraping(tmpfile.Name())

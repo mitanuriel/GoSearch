@@ -1,0 +1,110 @@
+name: OWASP ZAP Security Scan
+
+on:
+  push:
+  
+  pull_request:
+  
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  security-events: write
+  actions: read
+  id-token: write
+
+jobs:
+  owasp-zap:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: gosearch_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: false
+        options: >-
+          --health-cmd="curl -f http://localhost:9200/_cluster/health || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        ports:
+          - 9200:9200
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Install dependencies
+      working-directory: ./src/backend
+      run: |
+        go mod tidy
+        go mod download
+
+    - name: Set environment variables
+      run: |
+        echo "CONN_STR=host=localhost port=5432 user=postgres password=testpass dbname=gosearch_test sslmode=disable" >> $GITHUB_ENV
+        echo "PORT=8080" >> $GITHUB_ENV
+        echo "SESSION_SECRET=test-session-secret-for-zap-scanning-only" >> $GITHUB_ENV
+        echo "ES_HOST=localhost" >> $GITHUB_ENV
+        echo "ES_USERNAME=elastic" >> $GITHUB_ENV
+        echo "ES_PASSWORD=changeme" >> $GITHUB_ENV
+
+    - name: Initialize database schema
+      env:
+        PGPASSWORD: testpass
+      run: |
+        psql -h localhost -U postgres -d gosearch_test -c "
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          username TEXT NOT NULL UNIQUE,
+          email TEXT NOT NULL UNIQUE,
+          password TEXT NOT NULL,
+          password_changed BOOLEAN DEFAULT FALSE
+        );
+        CREATE TABLE IF NOT EXISTS pages (
+          title TEXT PRIMARY KEY,
+          url TEXT NOT NULL UNIQUE,
+          language TEXT NOT NULL CHECK(language IN ('en', 'da')) DEFAULT 'en',
+          last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          content TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_pages_content ON pages USING GIN (to_tsvector('english', content));
+        CREATE INDEX IF NOT EXISTS idx_pages_title ON pages USING GIN (to_tsvector('english', title));
+        "
+
+    - name: Run the application
+      run: |
+        go run ./src/backend/. & sleep 20
+
+    - name: Ensure the application is running
+      run: |
+        curl --retry 5 --retry-connrefused --retry-delay 5 http://localhost:8080
+
+    - name: ZAP Baseline Scan
+      uses: zaproxy/action-baseline@v0.15.0
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        target: 'http://localhost:8080'
+        cmd_options: '-a'  # Auto mode - passive scan only for quick results
+        allow_issue_writing: false
