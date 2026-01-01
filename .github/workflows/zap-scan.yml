@@ -102,26 +102,9 @@ jobs:
         curl --retry 5 --retry-connrefused --retry-delay 5 http://localhost:8080
 
     - name: ZAP Baseline Scan
-      uses: zaproxy/action-baseline@v0.12.0
+      uses: zaproxy/action-baseline@v0.15.0
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         target: 'http://localhost:8080'
         cmd_options: '-a'  # Auto mode - passive scan only for quick results
         allow_issue_writing: false
-        artifact_name: 'zap-scan-results'  # Valid artifact name without underscores
-      
-    - name: Upload ZAP Report
-    
-      uses: actions/upload-artifact@v4
-      with:
-        name: zap-scan-report
-        path: report_html.html
-        retention-days: 30
-
-    - name: Upload ZAP Markdown Report
-  
-      uses: actions/upload-artifact@v4
-      with:
-        name: zap-scan-markdown
-        path: report_md.md
-        retention-days: 30
