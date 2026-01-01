@@ -57,21 +57,36 @@ jobs:
     - name: Start the application
       run: |
         cd src/backend
-        export DB_HOST=localhost
-        export DB_PORT=5432
-        export DB_USER=postgres
-        export DB_PASSWORD=testpass
-        export DB_NAME=gosearch_test
+        # Set environment variables for the app
+        export CONN_STR="host=localhost port=5432 user=postgres password=testpass dbname=gosearch_test sslmode=disable"
         export PORT=8080
-        export ES_HOST=localhost
-        export ES_PASSWORD=changeme
-        export ES_USERNAME=elastic
-        ./gosearch &
-        sleep 10  # Give the app time to start
+        # Disable Elasticsearch to avoid connection issues in test environment
+        export ES_HOST=""
+        # Start the application in background
+        nohup ./gosearch > app.log 2>&1 &
+        APP_PID=$!
+        echo "Started app with PID: $APP_PID"
+        # Wait for app to be ready
+        for i in {1..30}; do
+          if curl -s http://localhost:8080 > /dev/null; then
+            echo "Application is ready!"
+            break
+          fi
+          echo "Waiting for application to start... ($i/30)"
+          sleep 2
+        done
+        # Show app logs if it failed to start
+        if ! curl -s http://localhost:8080 > /dev/null; then
+          echo "Application failed to start. Logs:"
+          cat app.log
+          exit 1
+        fi
       
     - name: Verify application is running
       run: |
-        curl --retry 10 --retry-connrefused --retry-delay 3 http://localhost:8080 || echo "App may not be fully ready"
+        echo "Testing application endpoints..."
+        curl -v http://localhost:8080 || exit 1
+        echo "Application is responding correctly!"
 
     - name: ZAP Baseline Scan
       uses: zaproxy/action-baseline@v0.12.0
