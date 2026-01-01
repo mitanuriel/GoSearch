@@ -68,6 +68,29 @@ jobs:
         echo "ES_USERNAME=elastic" >> $GITHUB_ENV
         echo "ES_PASSWORD=changeme" >> $GITHUB_ENV
 
+    - name: Initialize database schema
+      env:
+        PGPASSWORD: testpass
+      run: |
+        psql -h localhost -U postgres -d gosearch_test -c "
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          username TEXT NOT NULL UNIQUE,
+          email TEXT NOT NULL UNIQUE,
+          password TEXT NOT NULL,
+          password_changed BOOLEAN DEFAULT FALSE
+        );
+        CREATE TABLE IF NOT EXISTS pages (
+          title TEXT PRIMARY KEY,
+          url TEXT NOT NULL UNIQUE,
+          language TEXT NOT NULL CHECK(language IN ('en', 'da')) DEFAULT 'en',
+          last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          content TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_pages_content ON pages USING GIN (to_tsvector('english', content));
+        CREATE INDEX IF NOT EXISTS idx_pages_title ON pages USING GIN (to_tsvector('english', title));
+        "
+
     - name: Run the application
       run: |
         go run ./src/backend/. & sleep 20
