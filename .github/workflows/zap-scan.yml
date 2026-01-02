@@ -96,22 +96,58 @@ jobs:
         CREATE INDEX IF NOT EXISTS idx_pages_title ON pages USING GIN (to_tsvector('english', title));
         "
 
+    - name: Build the application
+      working-directory: ./src/backend
+      run: |
+        echo "Building application..."
+        go build -v -o ../../gosearch . 2>&1 | tee ../../build.log
+        echo "Build completed"
+        ls -lh ../../gosearch
+        
     - name: Run the application
       run: |
-        cd src/backend
-        nohup go run . > ../../app.log 2>&1 &
-        echo $! > ../../app.pid
-        cd ../..
-        echo "Application started with PID $(cat app.pid)"
-        echo "Waiting 30 seconds for application to fully start..."
-        sleep 30
+        echo "Starting application..."
+        ./gosearch > app.log 2>&1 &
+        APP_PID=$!
+        echo $APP_PID > app.pid
+        echo "Application started with PID $APP_PID"
+        
+        # Give it a moment to crash if it's going to
+        sleep 2
+        
+        # Check if it's still running
+        if ! ps -p $APP_PID > /dev/null; then
+          echo "ERROR: Application exited immediately!"
+          echo "Exit code check:"
+          wait $APP_PID || echo "Process exited with code $?"
+          echo "Logs:"
+          cat app.log
+          exit 1
+        fi
+        
+        echo "Application is running, waiting 30 seconds for full startup..."
+        sleep 28
 
     - name: Check application logs
       if: always()
       run: |
         echo "=== Application Logs ==="
-        cat app.log || echo "No logs available"
+        if [ -f app.log ]; then
+          cat app.log
+        else
+          echo "No logs available - app.log file not found"
+        fi
         echo "=== End of Logs ==="
+        
+        # Check if process is still running
+        if [ -f app.pid ]; then
+          PID=$(cat app.pid)
+          if ps -p $PID > /dev/null; then
+            echo "Process $PID is still running"
+          else
+            echo "Process $PID has exited"
+          fi
+        fi
 
     - name: Ensure the application is running
       run: |
