@@ -11,7 +11,7 @@ on:
       - main
       - develop
       
-  workflow_dispatch:    
+  workflow_dispatch:
 
 jobs:
   build:
