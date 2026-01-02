@@ -71,7 +71,7 @@ jobs:
         echo "ES_PASSWORD=changeme" >> $GITHUB_ENV
         echo "WEATHER_API_KEY=test-api-key-not-needed-for-zap-scan" >> $GITHUB_ENV
         echo "SCRAPING_ENABLED=0" >> $GITHUB_ENV
-        echo "CSRF_KEY=32-byte-long-test-csrf-key-12345" >> $GITHUB_ENV
+        echo "CSRF_KEY=12345678901234567890123456789012" >> $GITHUB_ENV
 
     - name: Initialize database schema
       env:

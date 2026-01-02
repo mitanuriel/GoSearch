@@ -102,14 +102,16 @@ func main() {
 
 	// Setup CSRF protection
 	csrfKey := []byte(os.Getenv("CSRF_KEY"))
-	if len(csrfKey) == 0 {
-		// Use session secret as fallback, but ensure it's 32 bytes
+	if len(csrfKey) != 32 {
+		// CSRF key must be exactly 32 bytes - use session secret as fallback
 		sessionSecret := os.Getenv("SESSION_SECRET")
 		if len(sessionSecret) >= 32 {
 			csrfKey = []byte(sessionSecret[:32])
 		} else {
+			// Default fallback key (exactly 32 bytes)
 			csrfKey = []byte("32-byte-long-auth-key-for-csrf!!")
 		}
+		log.Printf("CSRF key invalid or missing (got %d bytes), using fallback (32 bytes)", len([]byte(os.Getenv("CSRF_KEY"))))
 	}
 	csrfMiddleware := csrf.Protect(
 		csrfKey,
