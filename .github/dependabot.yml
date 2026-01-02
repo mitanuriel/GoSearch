@@ -6,10 +6,8 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    target-branch: "develop"
     open-pull-requests-limit: 3
-    labels:
-      - "dependencies"
-      - "github-actions"
 
   # Monitor Go dependencies
   - package-ecosystem: "gomod"
@@ -17,29 +15,7 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 3   
-    labels:
-      - "dependencies"
-      - "go"
-
-  # Monitor Docker base images in Dockerfile
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
+    target-branch: "develop"
     open-pull-requests-limit: 3
-    labels:
-      - "dependencies"
-      - "docker"
 
-  # Monitor npm dependencies (for knex-migrations)
-  - package-ecosystem: "npm"
-    directory: "/knex-migrations"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 3
-    labels:
-      - "dependencies"
-      - "npm"
+  
