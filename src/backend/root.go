@@ -2,7 +2,6 @@ package main
 
 import (
 	"html/template"
-	"log"
 	"net/http"
 )
 
@@ -18,14 +17,12 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := template.ParseFiles(templatePath+"layout.html", templatePath+"index.html")
 	if err != nil {
-		log.Printf("Error parsing templates: %v", err)
-		http.Error(w, "Error loading templates", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Failed to load homepage templates")
 		return
 	}
 
 	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
-		log.Printf("Error executing template: %v", err)
-		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Failed to render homepage")
 	}
 }
 
@@ -39,11 +36,10 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := template.ParseFiles(templatePath+"layout.html", templatePath+"about.html")
 	if err != nil {
-		http.Error(w, "Error loading about-side", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Failed to load about page templates")
 		return
 	}
 	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
-		log.Printf("Error executing template: %v", err)
-		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Failed to render about page")
 	}
 }

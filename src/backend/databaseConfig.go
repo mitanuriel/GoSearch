@@ -123,7 +123,7 @@ func runWikipediaScraper() {
 	if logPath == "" {
 		logPath = "search.log"
 	}
-	
+
 	// Track the number of pages before scraping
 	var countBefore int
 	err := db.QueryRow("SELECT COUNT(*) FROM pages").Scan(&countBefore)
@@ -157,7 +157,7 @@ func runWikipediaScraper() {
 
 func startCronScheduler() {
 	c := cron.New()
-	
+
 	// Schedule the checkTables function to run every minute
 	if _, err := c.AddFunc("*/1 * * * *", runCheckTables); err != nil {
 		log.Fatalf("Error scheduling cron job: %v", err)
@@ -229,8 +229,8 @@ func executePgDump(host, port, user, password, dbname, outputFile string) error 
 		"-p", port,
 		"-U", user,
 		"-F", "c", // Custom format
-		"-b",      // Include large objects
-		"-v",      // Verbose
+		"-b", // Include large objects
+		"-v", // Verbose
 		"-f", outputFile,
 		dbname)
 
@@ -256,13 +256,13 @@ func verifyBackupFile(outputFile string) error {
 	if err != nil {
 		return fmt.Errorf("error getting backup file info: %w", err)
 	}
-	
+
 	if fileInfo.Size() == 0 {
 		log.Printf("Warning: Backup file is empty: %s", outputFile)
 	} else {
 		log.Printf("Backup successful: %s (%.2f MB)", outputFile, float64(fileInfo.Size())/1024/1024)
 	}
-	
+
 	return nil
 }
 

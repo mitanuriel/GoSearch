@@ -42,7 +42,11 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 
+# Jest coverage
+coverage-js/
+
 #backup
 /src/backend/backups/
 
 VM-Gosearch_key.pem
+gosearch

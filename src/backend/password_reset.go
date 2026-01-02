@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"html/template"
 	"log"
 	"net/http"
@@ -122,7 +123,7 @@ func verifySetup() error {
 		log.Println("✅ password_changed column exists")
 	} else {
 		log.Println("❌ password_changed column DOES NOT exist")
-		return err
+		return errors.New("password_changed column does not exist")
 	}
 
 	// Check reset_tokens table
@@ -144,7 +145,7 @@ func verifySetup() error {
 		log.Println("✅ reset_tokens table exists")
 	} else {
 		log.Println("❌ reset_tokens table DOES NOT exist")
-		return err
+		return errors.New("reset_tokens table does not exist")
 	}
 
 	return nil
@@ -155,8 +156,7 @@ func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if user is logged in
 	session, err := store.Get(r, "session-name")
 	if err != nil {
-		log.Printf("Session error in resetPasswordHandler: %v", err)
-		http.Error(w, "Session error", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Session error in resetPasswordHandler")
 		return
 	}
 
@@ -170,8 +170,7 @@ func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	var passwordChanged bool
 	err = db.QueryRow("SELECT password_changed FROM users WHERE id = $1", userID).Scan(&passwordChanged)
 	if err != nil {
-		log.Printf("Database error in resetPasswordHandler: %v", err)
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Database query error in resetPasswordHandler")
 		return
 	}
 
@@ -185,15 +184,13 @@ func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	var username string
 	err = db.QueryRow("SELECT username FROM users WHERE id = $1", userID).Scan(&username)
 	if err != nil {
-		log.Printf("Error fetching username: %v", err)
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Error fetching username in resetPasswordHandler")
 		return
 	}
 
 	tmpl, err := template.ParseFiles(templatePath+"resetPassword.html", templatePath+"layout.html")
 	if err != nil {
-		log.Printf("Error loading reset password template: %v", err)
-		http.Error(w, "Error loading reset password page", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Failed to load password reset templates")
 		return
 	}
 
@@ -212,8 +209,7 @@ func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
-		log.Printf("Error executing template: %v", err)
-		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Failed to render password reset page")
 	}
 }
 
@@ -222,8 +218,7 @@ func apiResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if user is logged in
 	session, err := store.Get(r, "session-name")
 	if err != nil {
-		log.Printf("Session error in apiResetPasswordHandler: %v", err)
-		http.Error(w, "Session error", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Session error in apiResetPasswordHandler")
 		return
 	}
 
@@ -236,8 +231,7 @@ func apiResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse form
 	err = r.ParseForm()
 	if err != nil {
-		log.Printf("Form parsing error: %v", err)
-		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		handleBadRequest(w, r, "Invalid form data")
 		return
 	}
 
@@ -262,8 +256,7 @@ func apiResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	var currentPasswordHash string
 	err = db.QueryRow("SELECT password FROM users WHERE id = $1", userID).Scan(&currentPasswordHash)
 	if err != nil {
-		log.Printf("Error fetching password hash: %v", err)
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Error fetching password hash")
 		return
 	}
 
@@ -276,16 +269,14 @@ func apiResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	// Hash new password
 	hashedPassword, err := hashPassword(newPassword)
 	if err != nil {
-		log.Printf("Error hashing password: %v", err)
-		http.Error(w, "Error hashing password", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Error hashing password")
 		return
 	}
 
 	// Update user's password and set password_changed to true
 	_, err = db.Exec("UPDATE users SET password = $1, password_changed = TRUE WHERE id = $2", hashedPassword, userID)
 	if err != nil {
-		log.Printf("Error updating password: %v", err)
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Error updating password")
 		return
 	}
 
@@ -300,8 +291,7 @@ func apiResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 func renderResetPasswordError(w http.ResponseWriter, r *http.Request, userID int, errorMsg string) {
 	tmpl, err := template.ParseFiles(templatePath+"resetPassword.html", templatePath+"layout.html")
 	if err != nil {
-		log.Printf("Error loading reset password template: %v", err)
-		http.Error(w, "Error loading reset password page", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Failed to load password reset templates")
 		return
 	}
 
@@ -309,8 +299,7 @@ func renderResetPasswordError(w http.ResponseWriter, r *http.Request, userID int
 	var username string
 	err = db.QueryRow("SELECT username FROM users WHERE id = $1", userID).Scan(&username)
 	if err != nil {
-		log.Printf("Error fetching username: %v", err)
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Error fetching username")
 		return
 	}
 
@@ -325,8 +314,7 @@ func renderResetPasswordError(w http.ResponseWriter, r *http.Request, userID int
 	}
 
 	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
-		log.Printf("Error executing template: %v", err)
-		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Error rendering page")
 	}
 }
 

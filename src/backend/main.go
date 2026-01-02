@@ -64,19 +64,19 @@ func main() {
 
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
-	log.Printf("Warning: could not open search log file: %v, using stdout instead", err)
-	searchLogger = log.New(os.Stdout, "SEARCH: ", log.LstdFlags)
-} else {
-	log.Printf("Search logs will be written to %s", logPath)
-	searchLogger = log.New(f, "SEARCH: ", log.LstdFlags)
-	defer func() { _ = f.Close() }()
-}
+		log.Printf("Warning: could not open search log file: %v, using stdout instead", err)
+		searchLogger = log.New(os.Stdout, "SEARCH: ", log.LstdFlags)
+	} else {
+		log.Printf("Search logs will be written to %s", logPath)
+		searchLogger = log.New(f, "SEARCH: ", log.LstdFlags)
+		defer func() { _ = f.Close() }()
+	}
 
-// Run checkTables once at startup, then start the cron scheduler for periodic checks
-checkTables()
-startCronScheduler()
+	// Run checkTables once at startup, then start the cron scheduler for periodic checks
+	checkTables()
+	startCronScheduler()
 
-err = db.Ping()
+	err = db.Ping()
 	if err != nil {
 		log.Fatalf("Database connection failed: %v", err)
 	}
@@ -92,6 +92,11 @@ err = db.Ping()
 	// Detter er Gorilla Mux's route handler, i stedet for Flasks indbyggede router-handler
 	///Opretter en ny router
 	r := mux.NewRouter()
+
+	// Add security headers middleware first (applies to all routes)
+	r.Use(securityHeadersMiddleware)
+	// Add recovery middleware to catch panics
+	r.Use(recoveryMiddleware)
 	r.Use(passwordResetMiddleware)
 
 	fmt.Println("Registering /metrics endpoint...")

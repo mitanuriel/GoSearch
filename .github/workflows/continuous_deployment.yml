@@ -9,6 +9,12 @@ permissions:
   contents: read
   packages: write
 
+env:
+  DOCKER_USERNAME: ${{ github.actor }}
+  DOCKER_REGISTRY: ghcr.io
+  SSH_USER: ${{ secrets.SERVER_USER }}
+  SSH_HOST: ${{ secrets.SERVER_HOST }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,10 +26,10 @@ jobs:
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2
 
       - name: Log in to GHCR
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ env.DOCKER_USERNAME }}
           password: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Build and push Docker image
@@ -43,20 +49,28 @@ jobs:
         - name: Checkout code
           uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
-        - name: Create SSH key file
+        - name: Add SSH key to runner
+          run: |
+            mkdir -p ~/.ssh/
+            echo "$SSH_PRIVATE_KEY" > ~/.ssh/ssh_key
+            chmod 600 ~/.ssh/ssh_key
+          env:
+            SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        
+        - name: Add server to known hosts
           run: |
             mkdir -p ~/.ssh
-            echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/ssh_key
-            chmod 600 ~/.ssh/ssh_key
-            ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+            chmod 700 ~/.ssh
+            ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts
+            chmod 644 ~/.ssh/known_hosts
         
-        - name: Copy Docker-Compose to server
+        - name: Transfer Docker-Compose to server
           run: |
-            scp -i ~/.ssh/ssh_key ./docker-compose.dev.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST}}:~/GoSearch/
+            scp -i ~/.ssh/ssh_key ./docker-compose.dev.yml $SSH_USER@$SSH_HOST:~/GoSearch/
 
         - name: Check docker installation
           run: |
-            ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            ssh -i ~/.ssh/ssh_key $SSH_USER@$SSH_HOST << 'EOF'
             if ! command -v docker &> /dev/null; then
               echo "Could not find docker, installing..."
               sudo apt-get update
@@ -77,7 +91,7 @@ jobs:
           
         - name: Check docker-compose installation
           run: |
-            ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            ssh -i ~/.ssh/ssh_key $SSH_USER@$SSH_HOST << 'EOF'
             if ! command -v docker-compose &> /dev/null; then
               echo "Could not find docker-compose, installing..."
               sudo curl -SL https://github.com/docker/compose/releases/download/v2.34.0/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
@@ -90,21 +104,14 @@ jobs:
 
         - name: Stop and remove existing container
           run: |
-            ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            ssh -i ~/.ssh/ssh_key $SSH_USER@$SSH_HOST << 'EOF'
             docker stop go-app 2>/dev/null || true
             docker rm go-app 2>/dev/null || true
             EOF
 
-        - name: Add user to Docker group
-          run: |
-            ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-            sudo usermod -aG docker ${{ secrets.SERVER_USER }}
-            EOF
-
         - name: Deploy to server
           run: |
-            ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            ssh -i ~/.ssh/ssh_key $SSH_USER@$SSH_HOST << 'EOF'
             mkdir -p ~/GoSearch
             cd ~/GoSearch
             docker-compose -f docker-compose.dev.yml down -v || true
@@ -114,7 +121,7 @@ jobs:
 
         - name: Clean up Docker resources
           run: |
-            ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            ssh -i ~/.ssh/ssh_key $SSH_USER@$SSH_HOST << 'EOF'
             docker container prune -f
             docker image prune -f
             EOF
