@@ -16,7 +16,7 @@ COPY src ./src
 # Disables CGO and specifies the name for the compiled application as app
 RUN CGO_ENABLED=1 GOOS=linux go build -o app ./src/backend
 
-FROM alpine:3.21.3
+FROM alpine:3.23.2
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
