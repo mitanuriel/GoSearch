@@ -163,12 +163,14 @@ jobs:
     - name: Ensure the application is running
       run: |
         echo "Checking application health..."
-        if ! curl --fail --retry 10 --retry-connrefused --retry-delay 3 http://localhost:8080/health; then
+        RESPONSE=$(curl -s --fail --retry 10 --retry-connrefused --retry-delay 3 http://localhost:8080/health)
+        if [ $? -ne 0 ]; then
           echo "ERROR: Health check failed. Application logs:"
           cat app.log
           exit 1
         fi
-        echo "Application is running successfully!"
+        echo "Health check response: $RESPONSE"
+        echo "✓ Application is running successfully!"
 
     - name: ZAP Baseline Scan
       uses: zaproxy/action-baseline@v0.15.0
