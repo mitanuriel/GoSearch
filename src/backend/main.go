@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -99,6 +100,23 @@ func main() {
 	r.Use(recoveryMiddleware)
 	r.Use(passwordResetMiddleware)
 
+	// Setup CSRF protection
+	csrfKey := []byte(os.Getenv("CSRF_KEY"))
+	if len(csrfKey) == 0 {
+		// Use session secret as fallback, but ensure it's 32 bytes
+		sessionSecret := os.Getenv("SESSION_SECRET")
+		if len(sessionSecret) >= 32 {
+			csrfKey = []byte(sessionSecret[:32])
+		} else {
+			csrfKey = []byte("32-byte-long-auth-key-for-csrf!!")
+		}
+	}
+	csrfMiddleware := csrf.Protect(
+		csrfKey,
+		csrf.Secure(false), // Set to true in production with HTTPS
+		csrf.Path("/"),
+	)
+
 	fmt.Println("Registering /metrics endpoint...")
 	r.Handle("/metrics", promhttp.Handler())
 
@@ -131,6 +149,6 @@ func main() {
 
 	fmt.Println("Server running on http://localhost:8080")
 	//Starter serveren.
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Fatal(http.ListenAndServe(":8080", csrfMiddleware(r)))
 
 }
