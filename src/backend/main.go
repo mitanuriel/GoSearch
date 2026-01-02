@@ -133,6 +133,12 @@ func main() {
 	appRouter.HandleFunc("/register", registerHandler).Methods("GET") //Register-side
 	appRouter.HandleFunc("/search", searchHandler).Methods("GET")
 	appRouter.HandleFunc("/reset-password", resetPasswordHandler).Methods("GET")
+	
+	// Health check endpoint (no CSRF, no session required)
+	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	}).Methods("GET")
 
 	// Definerer api-erne
 	appRouter.HandleFunc("/api/login", apiLogin).Methods("POST")

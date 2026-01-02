@@ -162,8 +162,9 @@ jobs:
 
     - name: Ensure the application is running
       run: |
-        if ! curl --retry 10 --retry-connrefused --retry-delay 3 http://localhost:8080; then
-          echo "Application failed to start. Checking logs:"
+        echo "Checking application health..."
+        if ! curl --fail --retry 10 --retry-connrefused --retry-delay 3 http://localhost:8080/health; then
+          echo "ERROR: Health check failed. Application logs:"
           cat app.log
           exit 1
         fi
