@@ -1,4 +1,4 @@
-FROM golang:1.24.0-alpine AS builder
+FROM golang:1.25.5-alpine AS builder
 
 RUN apk add --no-cache build-base=0.5-r3 postgresql15-dev=15.13-r0
 
