@@ -116,9 +116,9 @@ func TestVerifySetup_MissingColumn(t *testing.T) {
 
 	err := verifySetup()
 
-	// verifySetup returns the err variable which is nil even if column doesn't exist (bug in original code)
-	// But it logs the error, so we test the behavior as-is
-	assert.NoError(t, err, "Current implementation doesn't return error for missing column")
+	// After CodeRabbit fix - function now properly returns error when column doesn't exist
+	assert.Error(t, err, "Should return error for missing column")
+	assert.Contains(t, err.Error(), "password_changed column does not exist")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -136,8 +136,9 @@ func TestVerifySetup_MissingTable(t *testing.T) {
 
 	err := verifySetup()
 
-	// Same as above - current implementation doesn't return error
-	assert.NoError(t, err, "Current implementation doesn't return error for missing table")
+	// After CodeRabbit fix - function now properly returns error when table doesn't exist
+	assert.Error(t, err, "Should return error for missing table")
+	assert.Contains(t, err.Error(), "reset_tokens table does not exist")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 

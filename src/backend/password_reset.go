@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"html/template"
 	"log"
 	"net/http"
@@ -122,7 +123,7 @@ func verifySetup() error {
 		log.Println("✅ password_changed column exists")
 	} else {
 		log.Println("❌ password_changed column DOES NOT exist")
-		return err
+		return errors.New("password_changed column does not exist")
 	}
 
 	// Check reset_tokens table
@@ -144,7 +145,7 @@ func verifySetup() error {
 		log.Println("✅ reset_tokens table exists")
 	} else {
 		log.Println("❌ reset_tokens table DOES NOT exist")
-		return err
+		return errors.New("reset_tokens table does not exist")
 	}
 
 	return nil
@@ -313,8 +314,7 @@ func renderResetPasswordError(w http.ResponseWriter, r *http.Request, userID int
 	}
 
 	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
-		log.Printf("Error executing template: %v", err)
-		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+		handleInternalError(w, r, err, "Error rendering page")
 	}
 }
 

@@ -92,8 +92,14 @@ func TestWeatherHandler_TemplateError(t *testing.T) {
 func TestFetchWeatherData_MissingAPIKey(t *testing.T) {
 	// Save original and unset API key
 	originalKey := os.Getenv("OPENWEATHER_API_KEY")
-	_ = os.Unsetenv("OPENWEATHER_API_KEY")
-	defer func() { _ = os.Setenv("OPENWEATHER_API_KEY", originalKey) }()
+	if err := os.Unsetenv("OPENWEATHER_API_KEY"); err != nil {
+		t.Logf("Warning: failed to unset OPENWEATHER_API_KEY: %v", err)
+	}
+	defer func() {
+		if err := os.Setenv("OPENWEATHER_API_KEY", originalKey); err != nil {
+			t.Logf("Warning: failed to restore OPENWEATHER_API_KEY: %v", err)
+		}
+	}()
 
 	_, err := fetchWeatherData("Copenhagen")
 	assert.Error(t, err)
