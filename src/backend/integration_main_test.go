@@ -1,6 +1,9 @@
+//go:build integration
+// +build integration
+
 // Integration tests for main server startup and infrastructure
 // These tests require real PostgreSQL database running locally.
-// Run with: go test -run TestConnectDB_Integration ./src/backend/
+// Run with: go test -tags=integration -run TestConnectDB_Integration ./src/backend/
 //
 //nolint:errcheck // Test cleanup errors are not critical
 package main

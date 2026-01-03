@@ -1,6 +1,9 @@
+//go:build integration
+// +build integration
+
 // Integration tests for cron scheduler and backup functions
 // These tests require PostgreSQL database and pg_dump utility.
-// Run with: go test -run TestCheckTables_Integration ./src/backend/
+// Run with: go test -tags=integration -run TestCheckTables_Integration ./src/backend/
 //
 //nolint:errcheck // Test cleanup errors are not critical
 package main
