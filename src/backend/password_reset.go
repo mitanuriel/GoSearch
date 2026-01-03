@@ -200,12 +200,14 @@ func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		Username     string
 		Error        string
 		UserLoggedIn bool
+		CSRFToken    string
 	}{
 		Title:        "Reset Password",
 		UserID:       userID.(int),
 		Username:     username,
 		Error:        "",
 		UserLoggedIn: true,
+		CSRFToken:    "", // filippo.io/csrf/gorilla uses Fetch metadata headers, no token needed
 	}
 
 	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {

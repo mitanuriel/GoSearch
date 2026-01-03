@@ -5,6 +5,7 @@ go 1.24.0
 require github.com/gorilla/mux v1.8.1
 
 require (
+	filippo.io/csrf v0.2.1
 	github.com/elastic/go-elasticsearch/v8 v8.18.0
 	github.com/gocolly/colly v1.2.0
 	github.com/gorilla/sessions v1.4.0

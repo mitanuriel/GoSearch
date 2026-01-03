@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	csrf "filippo.io/csrf/gorilla"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -99,6 +100,27 @@ func main() {
 	r.Use(recoveryMiddleware)
 	r.Use(passwordResetMiddleware)
 
+	// Setup CSRF protection using Fetch metadata headers
+	// filippo.io/csrf/gorilla uses modern browser security features (Sec-Fetch-Site header)
+	// instead of tokens, making it more secure and simpler
+	csrfKeyStr := os.Getenv("CSRF_KEY")
+	csrfKey := []byte(csrfKeyStr)
+	if len(csrfKey) != 32 {
+		// CSRF key must be exactly 32 bytes - use session secret as fallback
+		sessionSecret := os.Getenv("SESSION_SECRET")
+		if len(sessionSecret) >= 32 {
+			csrfKey = []byte(sessionSecret[:32])
+		} else {
+			// Default fallback key (exactly 32 bytes)
+			csrfKey = []byte("32-byte-long-auth-key-for-csrf!!")
+		}
+		log.Printf("CSRF key invalid or missing (got %d bytes), using fallback (32 bytes)", len(csrfKeyStr))
+	}
+
+	// Note: filippo.io/csrf/gorilla does not use Secure() or Path() options
+	// It relies on Fetch metadata headers which are more secure
+	csrfMiddleware := csrf.Protect(csrfKey)
+
 	fmt.Println("Registering /metrics endpoint...")
 	r.Handle("/metrics", promhttp.Handler())
 
@@ -113,6 +135,12 @@ func main() {
 	appRouter.HandleFunc("/register", registerHandler).Methods("GET") //Register-side
 	appRouter.HandleFunc("/search", searchHandler).Methods("GET")
 	appRouter.HandleFunc("/reset-password", resetPasswordHandler).Methods("GET")
+	
+	// Health check endpoint (no CSRF, no session required)
+	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("OK"))
+	}).Methods("GET")
 
 	// Definerer api-erne
 	appRouter.HandleFunc("/api/login", apiLogin).Methods("POST")
@@ -131,6 +159,6 @@ func main() {
 
 	fmt.Println("Server running on http://localhost:8080")
 	//Starter serveren.
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Fatal(http.ListenAndServe(":8080", csrfMiddleware(r)))
 
 }

@@ -5,6 +5,7 @@
     {{ end }}
 
     <form action="/api/login" method="POST">
+        <input type="hidden" name="gorilla.csrf.Token" value="{{ .CSRFToken }}">
         <div>
             <h2>Log in</h2>
             <div>
