@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -85,6 +86,86 @@ func TestSetupPasswordResetTable_ColumnCheckError(t *testing.T) {
 	err := setupPasswordResetTable()
 
 	assert.Error(t, err, "Setup should fail when column check fails")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSetupPasswordResetTable_AlterTableError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock column existence check - column doesn't exist
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+	// Mock ALTER TABLE to fail
+	mock.ExpectExec("ALTER TABLE users ADD COLUMN password_changed BOOLEAN DEFAULT TRUE").
+		WillReturnError(assert.AnError)
+
+	err := setupPasswordResetTable()
+
+	assert.Error(t, err, "Setup should fail when ALTER TABLE fails")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSetupPasswordResetTable_UpdateUsersError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock column existence check - column doesn't exist
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+	// Mock ALTER TABLE success
+	mock.ExpectExec("ALTER TABLE users ADD COLUMN password_changed BOOLEAN DEFAULT TRUE").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	// Mock UPDATE to fail
+	mock.ExpectExec("UPDATE users SET password_changed = FALSE").
+		WillReturnError(assert.AnError)
+
+	err := setupPasswordResetTable()
+
+	assert.Error(t, err, "Setup should fail when UPDATE users fails")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSetupPasswordResetTable_TableCheckError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock column existence check - column exists
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	// Mock table existence check to fail
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.tables WHERE table_name = 'reset_tokens' \)`).
+		WillReturnError(assert.AnError)
+
+	err := setupPasswordResetTable()
+
+	assert.Error(t, err, "Setup should fail when table check fails")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSetupPasswordResetTable_CreateTableError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock column existence check - column exists
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	// Mock table existence check - table doesn't exist
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.tables WHERE table_name = 'reset_tokens' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+	// Mock CREATE TABLE to fail
+	mock.ExpectExec("CREATE TABLE reset_tokens").
+		WillReturnError(assert.AnError)
+
+	err := setupPasswordResetTable()
+
+	assert.Error(t, err, "Setup should fail when CREATE TABLE fails")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -835,6 +916,45 @@ func TestCheckPasswordResetRequired_ErrorPath(t *testing.T) {
 	assert.False(t, result)
 }
 
+func TestCheckPasswordResetRequired_UserNotFound(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// First mock the column existence check (returns true - column exists)
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	// Then mock the password_changed query to return sql.ErrNoRows
+	mock.ExpectQuery("SELECT password_changed FROM users WHERE id = \\$1").
+		WithArgs(999).
+		WillReturnError(sql.ErrNoRows)
+
+	result := checkPasswordResetRequired(999)
+
+	// Should return false when user doesn't exist
+	assert.False(t, result)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestCheckPasswordResetRequired_AddColumnError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// First mock the column existence check (returns false - column doesn't exist)
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+	// Then mock the ALTER TABLE command to fail
+	mock.ExpectExec("ALTER TABLE users ADD COLUMN password_changed BOOLEAN DEFAULT TRUE").
+		WillReturnError(assert.AnError)
+
+	result := checkPasswordResetRequired(1)
+
+	// Should return false when ALTER TABLE fails
+	assert.False(t, result)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestVerifySetup_QueryError(t *testing.T) {
 	mockDB, mock := setupMockDB()
 	defer func() { _ = mockDB.Close() }()
@@ -846,6 +966,24 @@ func TestVerifySetup_QueryError(t *testing.T) {
 	err := verifySetup()
 
 	assert.Error(t, err)
+}
+
+func TestVerifySetup_TableCheckQueryError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// First query succeeds (column exists)
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	// Second query fails (table check error)
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.tables WHERE table_name = 'reset_tokens' \)`).
+		WillReturnError(assert.AnError)
+
+	err := verifySetup()
+
+	assert.Error(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestPasswordResetMiddleware_NotLoggedIn(t *testing.T) {

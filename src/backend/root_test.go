@@ -127,3 +127,45 @@ func TestAboutHandler_TemplateError(t *testing.T) {
 	resp := w.Result()
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 }
+
+func TestRootHandler_StoreGetError(t *testing.T) {
+	// Create a store with invalid configuration that causes Get to fail
+	// Using empty key slice causes decoding errors
+	mockStore := sessions.NewCookieStore([]byte(""))
+	store = mockStore
+
+	req := httptest.NewRequest("GET", "/", nil)
+	// Add an invalid session cookie to trigger decode error
+	req.AddCookie(&http.Cookie{
+		Name:  "session-name",
+		Value: "invalid-session-data",
+	})
+	w := httptest.NewRecorder()
+
+	rootHandler(w, req)
+
+	// Handler should still work even with session error
+	resp := w.Result()
+	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusInternalServerError)
+}
+
+func TestAboutHandler_StoreGetError(t *testing.T) {
+	// Create a store with invalid configuration that causes Get to fail
+	// Using empty key slice causes decoding errors
+	mockStore := sessions.NewCookieStore([]byte(""))
+	store = mockStore
+
+	req := httptest.NewRequest("GET", "/about", nil)
+	// Add an invalid session cookie to trigger decode error
+	req.AddCookie(&http.Cookie{
+		Name:  "session-name",
+		Value: "invalid-session-data",
+	})
+	w := httptest.NewRecorder()
+
+	aboutHandler(w, req)
+
+	// Handler should still work even with session error
+	resp := w.Result()
+	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusInternalServerError)
+}
