@@ -1,5 +1,6 @@
 [![Go CI](https://github.com/mitanuriel/GoSearch/actions/workflows/actions.yml/badge.svg?branch)](https://github.com/mitanuriel/GoSearch/actions/workflows/actions.yml)
 
+<!-- Force rebuild 2026-01-03 -->
 
 ## Run program when in backend directory:
     go run .
