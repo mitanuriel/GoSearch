@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -235,4 +236,25 @@ func TestIncrementUserSessionsTotal(t *testing.T) {
 
 	// Test passes if no panic (Prometheus metrics recorded)
 	t.Log("Successfully incremented session counters without errors")
+}
+
+func TestGetAuthStatus_StoreGetError(t *testing.T) {
+	// Setup session store with invalid configuration to force error
+	originalStore := store
+	// Create a store with mismatched hash/block keys that will cause errors
+	store = sessions.NewCookieStore([]byte("short"))
+	defer func() { store = originalStore }()
+
+	// Create request with corrupted session cookie
+	req := httptest.NewRequest("GET", "/", nil)
+	req.AddCookie(&http.Cookie{
+		Name:  "session-name",
+		Value: "invalid-corrupted-session-data",
+	})
+
+	// Get auth status - should return anonymous on error
+	status := getAuthStatus(req)
+
+	// Should return anonymous when store.Get fails
+	assert.Equal(t, "anonymous", status)
 }

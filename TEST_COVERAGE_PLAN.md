@@ -1,8 +1,13 @@
 # Test Coverage Improvement Plan
 
-**Current Coverage:** 52.8%  
+**Current Coverage:** 53.8% (Updated: 2026-01-03)  
 **Target:** 80% (to pass SonarCloud quality gate)  
-**Gap:** Need ~27% more coverage
+**Gap:** Need ~26.2% more coverage
+
+## Progress Log
+- 2026-01-03: 52.3% → 53.8% (+1.5%) - Completed scraping.go Phase 3 tests
+  - StartScraping: 47.1% → 100%
+  - tryScrapeInLanguages: 25.0% → 100%
 
 ## Priority 1: Quick Wins (High Impact, Easy to Test)
 
@@ -12,13 +17,15 @@
 - **Missing:** Error handling paths for template execution
 - **Effort:** Low
 - **Impact:** +0.5%
+- **Status:** TODO
 
-### 2. Session Metrics (83.3% → 100%)
+### 2. Session Metrics (83.3% → ~90%)
 - **File:** `session_metrics.go`
 - **Function:** `getAuthStatus`
 - **Missing:** Error path when store.Get fails
 - **Effort:** Very Low
 - **Impact:** +0.3%
+- **Status:** ✅ DONE (added TestGetAuthStatus_StoreGetError)
 
 ### 3. Search Handler (95.2% → 100%)
 - **File:** `search.go`
@@ -26,6 +33,7 @@
 - **Missing:** Template execution error path
 - **Effort:** Low
 - **Impact:** +0.4%
+- **Status:** TODO
 
 ### 4. Weather Functions (84-86% → 100%)
 - **File:** `weather.go`
@@ -33,6 +41,7 @@
 - **Missing:** Error paths and edge cases
 - **Effort:** Low
 - **Impact:** +1.5%
+- **Status:** TODO
 
 ## Priority 2: Medium Impact (Partial Coverage)
 
@@ -47,6 +56,7 @@
 - **Missing:** Various error paths, validation failures
 - **Effort:** Medium
 - **Impact:** +5-8%
+- **Status:** TODO
 
 ### 6. Password Reset Functions (66-82% coverage)
 - **File:** `password_reset.go`
@@ -72,12 +82,13 @@
 ### 8. Scraping Functions (25-94% coverage)
 - **File:** `scraping.go`
 - **Functions:**
-  - `tryScrapeInLanguages` (25.0%)
-  - `StartScraping` (47.1%)
+  - `tryScrapeInLanguages` (25.0% → 100% ✅)
+  - `StartScraping` (47.1% → 100% ✅)
   - `scrapeWikipedia` (94.4%)
-- **Missing:** Error handling, language fallbacks, HTTP failures
+- **Missing:** None (main functions covered)
 - **Effort:** High (requires mocking HTTP requests)
 - **Impact:** +3-5%
+- **Status:** ✅ DONE (added comprehensive HTTP integration tests)
 
 ## Priority 3: Infrastructure (Currently 0% - Skip for Now)
 
@@ -94,36 +105,60 @@ These are hard to test and low ROI:
 ## Recommended Approach
 
 ### Phase 1: Quick Wins (Target: +3-5% coverage)
-1. Complete root handlers tests
-2. Complete session metrics tests
-3. Complete search handler tests
-4. Complete weather tests
+1. Complete root handlers tests - TODO
+2. Complete session metrics tests - ✅ DONE
+3. Complete search handler tests - TODO
+4. Complete weather tests - TODO
 
 **Estimated effort:** 2-3 hours  
-**Expected coverage:** ~56-58%
+**Expected coverage:** ~56-58%  
+**Status:** 1/4 complete
 
 ### Phase 2: User & Auth (Target: +8-12% coverage)
-1. Improve user handler tests
-2. Improve password reset tests
-3. Add missing error path tests
+1. Improve user handler tests - TODO
+2. Improve password reset tests - TODO
+3. Add missing error path tests - TODO
 
 **Estimated effort:** 4-6 hours  
-**Expected coverage:** ~64-70%
+**Expected coverage:** ~64-70%  
+**Status:** Not started
 
 ### Phase 3: Advanced Functions (Target: +10-15% coverage)
-1. Improve search Elasticsearch tests
-2. Improve scraping tests with HTTP mocking
+1. Improve search Elasticsearch tests - TODO
+2. Improve scraping tests with HTTP mocking - ✅ DONE
 
 **Estimated effort:** 6-8 hours  
-**Expected coverage:** ~74-85%
+**Expected coverage:** ~74-85%  
+**Status:** 1/2 complete
+
+## Next Steps (Priority Order)
+
+1. **Quick Wins Remaining** (Highest ROI):
+   - Root handlers (+0.5%)
+   - Search handler (+0.4%)
+   - Weather functions (+1.5%)
+   - **Total potential:** +2.4% → ~56.2% coverage
+
+2. **User Handlers** (Medium ROI):
+   - apiLogin, registerHandler, apiRegisterHandler error paths
+   - **Total potential:** +5-8% → ~61-64% coverage
+
+3. **Password Reset** (Medium ROI):
+   - Multiple functions with partial coverage
+   - **Total potential:** +6-10% → ~67-74% coverage
+
+4. **Search Elasticsearch** (Lower ROI):
+   - searchElasticsearch function (53.6%)
+   - **Total potential:** +2-3% → ~69-77% coverage
 
 ## Files to Create/Modify
 
 - `src/backend/root_test.go` - Enhance existing tests
-- `src/backend/session_metrics_test.go` - Enhance existing tests
+- ~~`src/backend/session_metrics_test.go`~~ - ✅ Enhanced
 - `src/backend/search_test.go` - Enhance existing tests
 - `src/backend/weather_test.go` - Enhance existing tests
 - `src/backend/user_test.go` - Add missing test cases
+- ~~`src/backend/scraping_test.go`~~ - ✅ Enhanced with comprehensive tests
 - `src/backend/password_reset_test.go` - Add missing test cases
 - `src/backend/scraping_test.go` - Add comprehensive mocking
 
