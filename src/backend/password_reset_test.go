@@ -820,7 +820,11 @@ func TestCheckPasswordResetRequired_ErrorPath(t *testing.T) {
 	mockDB, mock := setupMockDB()
 	defer func() { _ = mockDB.Close() }()
 
-	// Mock query to return error
+	// First mock the column existence check (returns true - column exists)
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	// Then mock the password_changed query to return error
 	mock.ExpectQuery("SELECT password_changed FROM users WHERE id = \\$1").
 		WithArgs(1).
 		WillReturnError(assert.AnError)

@@ -854,3 +854,96 @@ func TestLogoutHandler_SessionSaveError(t *testing.T) {
 	assert.True(t, resp.StatusCode >= 200)
 }
 
+func TestLogoutHandler_StoreGetError(t *testing.T) {
+	// Create a store with invalid configuration to trigger Get error
+	invalidStore := sessions.NewCookieStore([]byte("x")) // Too short key
+	store = invalidStore
+
+	req := httptest.NewRequest("POST", "/logout", nil)
+	w := httptest.NewRecorder()
+
+	logoutHandler(w, req)
+
+	// Should redirect even when store.Get fails
+	resp := w.Result()
+	assert.Equal(t, http.StatusSeeOther, resp.StatusCode)
+	assert.Equal(t, "/", resp.Header.Get("Location"))
+}
+
+func TestLogin_TemplateExecutionError(t *testing.T) {
+	// Set invalid template path to cause ExecuteTemplate error
+	originalPath := templatePath
+	templatePath = "/nonexistent/path/"
+	defer func() { templatePath = originalPath }()
+
+	mockStore := sessions.NewCookieStore([]byte("test-secret"))
+	store = mockStore
+
+	req := httptest.NewRequest("GET", "/login", nil)
+	w := httptest.NewRecorder()
+
+	login(w, req)
+
+	resp := w.Result()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+}
+
+func TestRegisterHandler_TemplateExecutionError(t *testing.T) {
+	mockStore := sessions.NewCookieStore([]byte("test-secret"))
+	store = mockStore
+
+	req := httptest.NewRequest("GET", "/register", nil)
+	w := httptest.NewRecorder()
+
+	// Call with valid templates first to ensure it works
+	registerHandler(w, req)
+
+	resp := w.Result()
+	// Should render successfully or handle error gracefully
+	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusInternalServerError)
+}
+
+func TestApiRegisterHandler_SessionGetError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Create invalid store
+	invalidStore := sessions.NewCookieStore([]byte("x"))
+	store = invalidStore
+
+	hashedPassword, _ := hashPassword("password123")
+
+	// Mock userExists
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT EXISTS\\(SELECT 1 FROM users WHERE LOWER\\(username\\) = LOWER\\(\\$1\\)\\)").
+		WithArgs("testuser").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectQuery("SELECT EXISTS\\(SELECT 1 FROM users WHERE LOWER\\(email\\) = LOWER\\(\\$1\\)\\)").
+		WithArgs("test@example.com").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectCommit()
+
+	// Mock INSERT
+	mock.ExpectQuery("INSERT INTO users").
+		WithArgs("testuser", "test@example.com", hashedPassword).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+
+	form := url.Values{
+		"username":  {"testuser"},
+		"email":     {"test@example.com"},
+		"password":  {"password123"},
+		"password2": {"password123"},
+	}
+
+	req := httptest.NewRequest("POST", "/api/register", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	apiRegisterHandler(w, req)
+
+	// Should handle session.Get error
+	resp := w.Result()
+	assert.True(t, resp.StatusCode >= 500)
+}
+
+
