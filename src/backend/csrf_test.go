@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gorilla/csrf"
+	csrf "filippo.io/csrf/gorilla"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,12 +21,8 @@ func TestCSRFProtectionSetup(t *testing.T) {
 	csrfKey := []byte(os.Getenv("CSRF_KEY"))
 	assert.Equal(t, 32, len(csrfKey), "CSRF key should be 32 bytes")
 
-	// Create CSRF middleware
-	csrfMiddleware := csrf.Protect(
-		csrfKey,
-		csrf.Secure(false),
-		csrf.Path("/"),
-	)
+	// Create CSRF middleware (no Secure or Path options needed for filippo.io/csrf/gorilla)
+	csrfMiddleware := csrf.Protect(csrfKey)
 
 	assert.NotNil(t, csrfMiddleware, "CSRF middleware should be created")
 }
@@ -74,17 +70,12 @@ func TestCSRFTokenGeneration(t *testing.T) {
 	r := mux.NewRouter()
 
 	csrfKey := []byte("32-byte-long-auth-key-for-csrf!!")
-	csrfMiddleware := csrf.Protect(
-		csrfKey,
-		csrf.Secure(false),
-		csrf.Path("/"),
-	)
+	csrfMiddleware := csrf.Protect(csrfKey)
 
-	// Add a test handler that returns the CSRF token
+	// Add a test handler that returns OK (no token needed with filippo.io/csrf/gorilla)
 	r.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
-		token := csrf.Token(r)
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(token))
+		_, _ = w.Write([]byte("OK"))
 	})
 
 	// Wrap router with CSRF middleware
@@ -96,9 +87,9 @@ func TestCSRFTokenGeneration(t *testing.T) {
 
 	handler.ServeHTTP(w, req)
 
-	// Check that we got a token
+	// Check that request succeeds (filippo.io/csrf/gorilla uses Fetch metadata, no token)
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.NotEmpty(t, w.Body.String(), "CSRF token should be generated")
+	assert.Equal(t, "OK", w.Body.String())
 }
 
 // TestCSRFProtectionBlocksRequestsWithoutToken tests that POST requests without CSRF token are blocked
@@ -109,8 +100,6 @@ func TestCSRFProtectionBlocksRequestsWithoutToken(t *testing.T) {
 	csrfKey := []byte("32-byte-long-auth-key-for-csrf!!")
 	csrfMiddleware := csrf.Protect(
 		csrfKey,
-		csrf.Secure(false),
-		csrf.Path("/"),
 	)
 
 	// Add a test POST handler
@@ -122,15 +111,19 @@ func TestCSRFProtectionBlocksRequestsWithoutToken(t *testing.T) {
 	// Wrap router with CSRF middleware
 	handler := csrfMiddleware(r)
 
-	// Make a POST request without CSRF token
+	// Make a POST request simulating a cross-site request
+	// filippo.io/csrf/gorilla uses Fetch metadata headers instead of tokens
 	req := httptest.NewRequest("POST", "/submit", strings.NewReader("data=test"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	// Simulate a cross-site request (will be blocked)
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+	req.Header.Set("Origin", "https://evil.com")
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
 
 	// Should be rejected (403 Forbidden)
-	assert.Equal(t, http.StatusForbidden, w.Code, "POST without CSRF token should be rejected")
+	assert.Equal(t, http.StatusForbidden, w.Code, "POST from cross-site origin should be rejected")
 }
 
 // TestCSRFProtectionAllowsGETRequests tests that GET requests don't require CSRF token
@@ -141,8 +134,6 @@ func TestCSRFProtectionAllowsGETRequests(t *testing.T) {
 	csrfKey := []byte("32-byte-long-auth-key-for-csrf!!")
 	csrfMiddleware := csrf.Protect(
 		csrfKey,
-		csrf.Secure(false),
-		csrf.Path("/"),
 	)
 
 	// Add a test GET handler
@@ -165,28 +156,23 @@ func TestCSRFProtectionAllowsGETRequests(t *testing.T) {
 	assert.Equal(t, "Success", w.Body.String())
 }
 
-// TestCSRFTokenInTemplateData tests that templates receive CSRF token
+// TestCSRFTokenInTemplateData tests that templates work without CSRF tokens
+// filippo.io/csrf/gorilla uses Fetch metadata headers, not tokens
 func TestCSRFTokenInTemplateData(t *testing.T) {
-	// Create a mock request with CSRF token
+	// Create a mock request
 	r := mux.NewRouter()
 
 	csrfKey := []byte("32-byte-long-auth-key-for-csrf!!")
-	csrfMiddleware := csrf.Protect(
-		csrfKey,
-		csrf.Secure(false),
-		csrf.Path("/"),
-	)
-
-	var capturedToken string
+	csrfMiddleware := csrf.Protect(csrfKey)
 
 	r.HandleFunc("/form", func(w http.ResponseWriter, r *http.Request) {
-		capturedToken = csrf.Token(r)
-		data := PageData{
+		// No token needed with filippo.io/csrf/gorilla
+		_ = PageData{
 			Title:     "Test Form",
-			CSRFToken: capturedToken,
+			CSRFToken: "",
 		}
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(data.CSRFToken))
+		_, _ = w.Write([]byte("Form Page"))
 	}).Methods("GET")
 
 	handler := csrfMiddleware(r)
@@ -197,8 +183,7 @@ func TestCSRFTokenInTemplateData(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.NotEmpty(t, capturedToken, "CSRF token should be captured")
-	assert.Equal(t, capturedToken, w.Body.String(), "CSRF token should match in response")
+	assert.Equal(t, "Form Page", w.Body.String())
 }
 
 // TestCSRFHeaderName tests the CSRF header configuration
@@ -208,8 +193,6 @@ func TestCSRFHeaderName(t *testing.T) {
 	csrfKey := []byte("32-byte-long-auth-key-for-csrf!!")
 	csrfMiddleware := csrf.Protect(
 		csrfKey,
-		csrf.Secure(false),
-		csrf.Path("/"),
 	)
 
 	assert.NotNil(t, csrfMiddleware, "CSRF middleware should be configured")
@@ -222,16 +205,12 @@ func TestCSRFSecureFlagConfiguration(t *testing.T) {
 	// Test with secure=false (for development/testing)
 	csrfDevMiddleware := csrf.Protect(
 		csrfKey,
-		csrf.Secure(false),
-		csrf.Path("/"),
 	)
 	assert.NotNil(t, csrfDevMiddleware, "CSRF dev middleware should be configured")
 
 	// Test with secure=true (for production)
 	csrfProdMiddleware := csrf.Protect(
 		csrfKey,
-		csrf.Secure(true),
-		csrf.Path("/"),
 	)
 	assert.NotNil(t, csrfProdMiddleware, "CSRF prod middleware should be configured")
 }

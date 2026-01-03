@@ -7,8 +7,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-
-	"github.com/gorilla/csrf"
 )
 
 // ForcePasswordReset adds a column to track if password has been changed
@@ -209,7 +207,7 @@ func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		Username:     username,
 		Error:        "",
 		UserLoggedIn: true,
-		CSRFToken:    csrf.Token(r),
+		CSRFToken:    "", // filippo.io/csrf/gorilla uses Fetch metadata headers, no token needed
 	}
 
 	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
