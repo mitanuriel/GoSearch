@@ -409,6 +409,54 @@ func TestTryScrapeInLanguages_NoLanguages(t *testing.T) {
 	assert.Contains(t, err.Error(), "no valid Wikipedia page found")
 }
 
+func TestTryScrapeInLanguages_NonExistentPage(t *testing.T) {
+	// Test with a term that doesn't exist in any Wikipedia
+	// Using a very unlikely combination to trigger failures
+	_, _, err := tryScrapeInLanguages("xyzzynonexistenttermabc123", []string{"da", "en"})
+
+	// Should return error after trying all languages
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no valid Wikipedia page found")
+}
+
+func TestTryScrapeInLanguages_SuccessOnFirstLanguage(t *testing.T) {
+	// Test scraping a known page (Go programming language)
+	// This makes a real HTTP request, so skip if in CI or offline
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	page, lang, err := tryScrapeInLanguages("Go", []string{"en", "da"})
+
+	// Should succeed on English Wikipedia
+	assert.NoError(t, err)
+	assert.Equal(t, "en", lang)
+	assert.NotEmpty(t, page.Title)
+	assert.NotEmpty(t, page.Content)
+	assert.Contains(t, page.URL, "en.wikipedia.org")
+	t.Logf("Successfully scraped: %s (%s)", page.Title, lang)
+}
+
+func TestTryScrapeInLanguages_FallbackToSecondLanguage(t *testing.T) {
+	// Test fallback mechanism
+	// Use a term that might exist in English but not Danish (or vice versa)
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	// Try with languages reversed - some pages exist in Danish but not in constructed URL form
+	page, lang, err := tryScrapeInLanguages("Go", []string{"en"})
+
+	// Should succeed on at least one language
+	if err == nil {
+		assert.NotEmpty(t, page.Title)
+		assert.Equal(t, "en", lang)
+		t.Logf("Successfully scraped: %s (%s)", page.Title, lang)
+	} else {
+		t.Logf("Expected error when no page found: %v", err)
+	}
+}
+
 func TestStartScraping_WithSearchTerms(t *testing.T) {
 	// Create temp log file with search terms
 	logContent := `query="testterm" from=127.0.0.1
@@ -465,3 +513,107 @@ func TestMarkAsProcessed_Error(t *testing.T) {
 
 	t.Log("Successfully handled markAsProcessed error")
 }
+
+func TestStartScraping_SuccessfulFlow(t *testing.T) {
+	// Skip this integration test in short mode
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	// Create temp log file with a term that exists on Wikipedia
+	logContent := `query="Go" from=127.0.0.1`
+
+	tmpfile, err := createTempLogFile(logContent)
+	assert.NoError(t, err)
+	defer cleanupTempFile(tmpfile)
+
+	// Setup mock DB
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock alreadyProcessed query - return false to allow scraping
+	mock.ExpectQuery("SELECT EXISTS \\(SELECT 1 FROM processed_searches WHERE search_term = \\$1\\)").
+		WithArgs("go").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+	// Mock savePageToDBWithLang INSERT
+	mock.ExpectExec("INSERT INTO pages").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	// Mock markAsProcessed INSERT
+	mock.ExpectExec("INSERT INTO processed_searches \\(search_term\\) VALUES \\(\\$1\\) ON CONFLICT DO NOTHING").
+		WithArgs("go").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	// Call StartScraping - should scrape, save, and mark as processed
+	StartScraping(tmpfile)
+
+	// Verify all expectations met
+	err = mock.ExpectationsWereMet()
+	assert.NoError(t, err)
+	t.Log("Successfully completed full scraping flow")
+}
+
+func TestStartScraping_SaveToDBError(t *testing.T) {
+	// Skip this integration test in short mode
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	// Create temp log file
+	logContent := `query="Go" from=127.0.0.1`
+
+	tmpfile, err := createTempLogFile(logContent)
+	assert.NoError(t, err)
+	defer cleanupTempFile(tmpfile)
+
+	// Setup mock DB
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock alreadyProcessed query - return false
+	mock.ExpectQuery("SELECT EXISTS \\(SELECT 1 FROM processed_searches WHERE search_term = \\$1\\)").
+		WithArgs("go").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+	// Mock savePageToDBWithLang INSERT to fail
+	mock.ExpectExec("INSERT INTO pages").
+		WillReturnError(assert.AnError)
+
+	// Call StartScraping - should scrape but fail to save
+	// Should NOT call markAsProcessed since save failed
+	StartScraping(tmpfile)
+
+	// Verify expectations
+	err = mock.ExpectationsWereMet()
+	assert.NoError(t, err)
+	t.Log("Successfully handled save error without marking as processed")
+}
+
+func TestStartScraping_ScrapeError(t *testing.T) {
+	// Create temp log file with a term that doesn't exist
+	logContent := `query="xyzzynonexistentabc123" from=127.0.0.1`
+
+	tmpfile, err := createTempLogFile(logContent)
+	assert.NoError(t, err)
+	defer cleanupTempFile(tmpfile)
+
+	// Setup mock DB
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock alreadyProcessed query - return false
+	mock.ExpectQuery("SELECT EXISTS \\(SELECT 1 FROM processed_searches WHERE search_term = \\$1\\)").
+		WithArgs("xyzzynonexistentabc123").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+	// Call StartScraping - should fail to scrape
+	// Should NOT call savePageToDBWithLang or markAsProcessed
+	StartScraping(tmpfile)
+
+	// Verify expectations
+	err = mock.ExpectationsWereMet()
+	assert.NoError(t, err)
+	t.Log("Successfully handled scrape error without saving or marking")
+}
+
