@@ -1006,3 +1006,27 @@ func TestPasswordResetMiddleware_NotLoggedIn(t *testing.T) {
 	assert.True(t, nextCalled)
 }
 
+func TestPasswordResetMiddleware_SessionError(t *testing.T) {
+	// Create a store with invalid configuration to trigger session error
+	mockStore := sessions.NewCookieStore([]byte("test"))
+	mockStore.MaxAge(-1) // This will cause session.Save to fail
+	store = mockStore
+
+	req := httptest.NewRequest("GET", "/search", nil)
+	// Add invalid session cookie to trigger store.Get error
+	req.Header.Set("Cookie", "session-name=invalid-base64-!@#$%")
+	w := httptest.NewRecorder()
+
+	nextCalled := false
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nextCalled = true
+		w.WriteHeader(http.StatusOK)
+	})
+
+	middleware := passwordResetMiddleware(nextHandler)
+	middleware.ServeHTTP(w, req)
+
+	// Should call next handler even when session error occurs
+	assert.True(t, nextCalled)
+}
+
