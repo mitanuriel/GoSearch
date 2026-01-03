@@ -189,6 +189,11 @@ func parseConnectionString(connStr string) (host, port, user, password, dbname s
 		user = connURL.User.Username()
 		password, _ = connURL.User.Password()
 		dbname = strings.TrimPrefix(connURL.Path, "/")
+		
+		// Validate that we got the essential fields
+		if host == "" || dbname == "" {
+			return "", "", "", "", "", fmt.Errorf("invalid postgres URL: missing host or database name")
+		}
 		return host, port, user, password, dbname, nil
 	}
 
@@ -210,6 +215,11 @@ func parseConnectionString(connStr string) (host, port, user, password, dbname s
 	user = params["user"]
 	password = params["password"]
 	dbname = params["dbname"]
+	
+	// Validate that we got the essential fields
+	if host == "" || dbname == "" {
+		return "", "", "", "", "", fmt.Errorf("invalid connection string: missing host or dbname")
+	}
 
 	return host, port, user, password, dbname, nil
 }
