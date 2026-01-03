@@ -49,11 +49,11 @@ CREATE TABLE pages (
 }
 
 // runTest is a table-driven helper for integration scenarios.
-func runTest(t *testing.T, name, method, path string, form url.Values, seed func(), check func(*http.Response, string)) {
+func runTest(t *testing.T, name, method, path string, form url.Values, seed func(*testing.T), check func(*testing.T, *http.Response, string)) {
 	t.Run(name, func(t *testing.T) {
 		setupTestDB(t)
 		if seed != nil {
-			seed()
+			seed(t)
 		}
 		// init session store
 		store = sessions.NewCookieStore([]byte("test-secret"))
@@ -84,7 +84,7 @@ func runTest(t *testing.T, name, method, path string, form url.Values, seed func
 
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		body := string(bodyBytes)
-		check(resp, body)
+		check(t, resp, body)
 	})
 }
 
@@ -94,14 +94,14 @@ func TestIntegration(t *testing.T) {
 		method string
 		path   string
 		form   url.Values
-		seed   func()
-		check  func(*http.Response, string)
+		seed   func(*testing.T)
+		check  func(*testing.T, *http.Response, string)
 	}{
 		{
 			name:   "Weather",
 			method: http.MethodGet,
-			path:   "/api/weather?city=Copenhagen",
-			check: func(resp *http.Response, body string) {
+			path:   "/weather?city=Copenhagen",
+			check: func(t *testing.T, resp *http.Response, body string) {
 				if resp.StatusCode != http.StatusOK {
 					t.Errorf("Weather expected 200 OK, got %d", resp.StatusCode)
 				}
@@ -114,7 +114,7 @@ func TestIntegration(t *testing.T) {
 			name:   "Root",
 			method: http.MethodGet,
 			path:   "/",
-			check: func(resp *http.Response, body string) {
+			check: func(t *testing.T, resp *http.Response, body string) {
 				if resp.StatusCode != http.StatusOK {
 					t.Errorf("Root expected 200 OK, got %d", resp.StatusCode)
 				}
@@ -128,8 +128,8 @@ func TestIntegration(t *testing.T) {
 		{
 			name:   "Search",
 			method: http.MethodGet,
-			path:   "/api/search?q=TestContent&language=en",
-			seed: func() {
+			path:   "/search?q=TestContent&language=en",
+			seed: func(t *testing.T) {
 				if _, err := db.Exec(
 					`INSERT INTO pages (title,url,language,last_updated,content) VALUES (?,?,?,?,?);`,
 					"TestTitle", "/test-url", "en", "2025-01-01", "TestContent",
@@ -140,7 +140,7 @@ func TestIntegration(t *testing.T) {
 					t.Fatalf("Failed to sync pages to Elasticsearch: %v", err)
 				}
 			},
-			check: func(resp *http.Response, body string) {
+			check: func(t *testing.T, resp *http.Response, body string) {
 				if resp.StatusCode != http.StatusOK {
 					t.Errorf("Search expected 200 OK, got %d", resp.StatusCode)
 				}
@@ -154,7 +154,7 @@ func TestIntegration(t *testing.T) {
 			method: http.MethodPost,
 			path:   "/api/login",
 			form:   url.Values{"username": {"user1"}, "password": {"pass123"}},
-			seed: func() {
+			seed: func(t *testing.T) {
 				hash, _ := hashPassword("pass123")
 				if _, err := db.Exec(
 					`INSERT INTO users (username,email,password,password_changed) VALUES (?,?,?,?);`,
@@ -163,7 +163,7 @@ func TestIntegration(t *testing.T) {
 					t.Fatalf("Login seed failed: %v", err)
 				}
 			},
-			check: func(resp *http.Response, body string) {
+			check: func(t *testing.T, resp *http.Response, body string) {
 				if resp.StatusCode != http.StatusSeeOther {
 					t.Errorf("API Login expected 303 SeeOther, got %d", resp.StatusCode)
 				}
@@ -174,7 +174,7 @@ func TestIntegration(t *testing.T) {
 			method: http.MethodPost,
 			path:   "/api/register",
 			form:   url.Values{"username": {"newuser"}, "email": {"new@example.com"}, "password": {"abc123"}, "password2": {"abc123"}},
-			check: func(resp *http.Response, body string) {
+			check: func(t *testing.T, resp *http.Response, body string) {
 				if resp.StatusCode != http.StatusSeeOther {
 					t.Errorf("API Register expected 303 SeeOther, got %d", resp.StatusCode)
 				}

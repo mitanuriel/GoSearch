@@ -158,9 +158,10 @@ These are hard to test and low ROI:
 - `src/backend/search_test.go` - Enhance existing tests
 - `src/backend/weather_test.go` - Enhance existing tests
 - `src/backend/user_test.go` - Add missing test cases
-- ~~`src/backend/scraping_test.go`~~ - ✅ Enhanced with comprehensive tests
-- `src/backend/password_reset_test.go` - Add missing test cases
-- `src/backend/scraping_test.go` - Add comprehensive mocking
+- ~~`src/backend/scraping_test.go`~~ - ✅ Enhanced with comprehensive tests and fallback testing
+- ~~`src/backend/password_reset_test.go`~~ - ✅ Enhanced with 7+ comprehensive tests
+- `src/backend/integration_test.go` - TODO: Update with newer test patterns from recent unit tests
+- `src/backend/smoke_test.go` - TODO: Add more tests for infrastructure code (main, databaseConfig, elasticsearch, prometheus)
 
 ## Success Metrics
 
