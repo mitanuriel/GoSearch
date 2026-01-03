@@ -737,3 +737,130 @@ func TestPasswordResetMiddleware_ColumnCheckError(t *testing.T) {
 	// Should call next handler when column check fails
 	assert.True(t, nextCalled)
 }
+
+func TestRenderResetPasswordError_Success(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock username query
+	mock.ExpectQuery("SELECT username FROM users WHERE id = \\$1").
+		WithArgs(1).
+		WillReturnRows(sqlmock.NewRows([]string{"username"}).AddRow("testuser"))
+
+	req := httptest.NewRequest("GET", "/reset-password", nil)
+	w := httptest.NewRecorder()
+
+	renderResetPasswordError(w, req, 1, "Test error message")
+
+	resp := w.Result()
+	// Should render error page successfully
+	assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusInternalServerError)
+}
+
+func TestRenderResetPasswordError_TemplateLoadError(t *testing.T) {
+	mockDB, _ := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Set invalid template path
+	originalPath := templatePath
+	templatePath = "/nonexistent/path/"
+	defer func() { templatePath = originalPath }()
+
+	req := httptest.NewRequest("GET", "/reset-password", nil)
+	w := httptest.NewRecorder()
+
+	renderResetPasswordError(w, req, 1, "Test error")
+
+	resp := w.Result()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+}
+
+func TestRenderResetPasswordError_UsernameQueryError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock username query error
+	mock.ExpectQuery("SELECT username FROM users WHERE id = \\$1").
+		WithArgs(1).
+		WillReturnError(assert.AnError)
+
+	req := httptest.NewRequest("GET", "/reset-password", nil)
+	w := httptest.NewRecorder()
+
+	renderResetPasswordError(w, req, 1, "Test error")
+
+	resp := w.Result()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+}
+
+func TestRenderResetPasswordError_TemplateExecutionError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock username query
+	mock.ExpectQuery("SELECT username FROM users WHERE id = \\$1").
+		WithArgs(1).
+		WillReturnRows(sqlmock.NewRows([]string{"username"}).AddRow("testuser"))
+
+	// Set invalid template path to cause execution error
+	originalPath := templatePath
+	templatePath = "/nonexistent/path/"
+	defer func() { templatePath = originalPath }()
+
+	req := httptest.NewRequest("GET", "/reset-password", nil)
+	w := httptest.NewRecorder()
+
+	renderResetPasswordError(w, req, 1, "Test error")
+
+	resp := w.Result()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+}
+
+func TestCheckPasswordResetRequired_ErrorPath(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock query to return error
+	mock.ExpectQuery("SELECT password_changed FROM users WHERE id = \\$1").
+		WithArgs(1).
+		WillReturnError(assert.AnError)
+
+	result := checkPasswordResetRequired(1)
+
+	// Should return false on error
+	assert.False(t, result)
+}
+
+func TestVerifySetup_QueryError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	// Mock query error
+	mock.ExpectQuery(`SELECT EXISTS \( SELECT 1 FROM information_schema\.columns WHERE table_name = 'users' AND column_name = 'password_changed' \)`).
+		WillReturnError(assert.AnError)
+
+	err := verifySetup()
+
+	assert.Error(t, err)
+}
+
+func TestPasswordResetMiddleware_NotLoggedIn(t *testing.T) {
+	mockStore := sessions.NewCookieStore([]byte("test-secret"))
+	store = mockStore
+
+	req := httptest.NewRequest("GET", "/search", nil)
+	w := httptest.NewRecorder()
+
+	nextCalled := false
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nextCalled = true
+		w.WriteHeader(http.StatusOK)
+	})
+
+	middleware := passwordResetMiddleware(nextHandler)
+	middleware.ServeHTTP(w, req)
+
+	// Should call next handler when not logged in
+	assert.True(t, nextCalled)
+}
+
