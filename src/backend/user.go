@@ -5,6 +5,8 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+
+	"github.com/gorilla/csrf"
 )
 
 func getTemplates() (*template.Template, error) {
@@ -33,6 +35,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		Title:        "Log in",
 		Template:     "login",
 		UserLoggedIn: userIsLoggedIn(r),
+		CSRFToken:    csrf.Token(r),
 	}
 
 	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
@@ -200,6 +203,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		Error:        "",
 		UserLoggedIn: false,
 		Template:     "register.html",
+		CSRFToken:    csrf.Token(r),
 	}
 
 	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {

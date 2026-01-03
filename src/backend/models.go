@@ -18,6 +18,7 @@ type PageData struct {
 	Title        string
 	Template     string
 	UserLoggedIn bool
+	CSRFToken    string
 }
 
 type Page struct {

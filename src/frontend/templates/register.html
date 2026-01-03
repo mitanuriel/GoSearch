@@ -1,6 +1,7 @@
 {{ define "content" }}
     
     <form action="/api/register" method="POST">
+        <input type="hidden" name="gorilla.csrf.Token" value="{{ .CSRFToken }}">
         <h2>Register</h2>
         <div class="form-group">
             <label for="username">Username:</label>

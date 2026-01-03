@@ -59,7 +59,18 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.24'
+    
+    - name: Verify Go version matches go.mod
+      run: |
+        GO_MOD_VERSION=$(grep '^go ' go.mod | awk '{print $2}')
+        GO_INSTALLED_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
+        echo "go.mod requires: $GO_MOD_VERSION"
+        echo "Installed version: $GO_INSTALLED_VERSION"
+        if [[ "$GO_INSTALLED_VERSION" != "$GO_MOD_VERSION"* ]]; then
+          echo "ERROR: Go version mismatch! Workflow uses $GO_INSTALLED_VERSION but go.mod requires $GO_MOD_VERSION"
+          exit 1
+        fi
 
     - name: Install dependencies
       working-directory: ./src/backend
@@ -75,6 +86,9 @@ jobs:
         echo "ES_HOST=localhost" >> $GITHUB_ENV
         echo "ES_USERNAME=elastic" >> $GITHUB_ENV
         echo "ES_PASSWORD=changeme" >> $GITHUB_ENV
+        echo "WEATHER_API_KEY=test-api-key-not-needed-for-zap-scan" >> $GITHUB_ENV
+        echo "SCRAPING_ENABLED=0" >> $GITHUB_ENV
+        echo "CSRF_KEY=12345678901234567890123456789012" >> $GITHUB_ENV
 
     - name: Initialize database schema
       env:
@@ -99,13 +113,70 @@ jobs:
         CREATE INDEX IF NOT EXISTS idx_pages_title ON pages USING GIN (to_tsvector('english', title));
         "
 
+    - name: Build the application
+      working-directory: ./src/backend
+      run: |
+        echo "Building application..."
+        go build -v -o ../../gosearch . 2>&1 | tee ../../build.log
+        echo "Build completed"
+        ls -lh ../../gosearch
+        
     - name: Run the application
       run: |
-        go run ./src/backend/. & sleep 20
+        echo "Starting application..."
+        ./gosearch > app.log 2>&1 &
+        APP_PID=$!
+        echo $APP_PID > app.pid
+        echo "Application started with PID $APP_PID"
+        
+        # Give it a moment to crash if it's going to
+        sleep 2
+        
+        # Check if it's still running
+        if ! ps -p $APP_PID > /dev/null; then
+          echo "ERROR: Application exited immediately!"
+          echo "Exit code check:"
+          wait $APP_PID || echo "Process exited with code $?"
+          echo "Logs:"
+          cat app.log
+          exit 1
+        fi
+        
+        echo "Application is running, waiting 30 seconds for full startup..."
+        sleep 28
+
+    - name: Check application logs
+      if: always()
+      run: |
+        echo "=== Application Logs ==="
+        if [ -f app.log ]; then
+          cat app.log
+        else
+          echo "No logs available - app.log file not found"
+        fi
+        echo "=== End of Logs ==="
+        
+        # Check if process is still running
+        if [ -f app.pid ]; then
+          PID=$(cat app.pid)
+          if ps -p $PID > /dev/null; then
+            echo "Process $PID is still running"
+          else
+            echo "Process $PID has exited"
+          fi
+        fi
 
     - name: Ensure the application is running
       run: |
-        curl --retry 5 --retry-connrefused --retry-delay 5 http://localhost:8080
+        echo "Checking application health..."
+        RESPONSE=$(curl -s --fail --retry 10 --retry-connrefused --retry-delay 3 http://localhost:8080/health)
+        if [ $? -ne 0 ]; then
+          echo "ERROR: Health check failed. Application logs:"
+          cat app.log
+          exit 1
+        fi
+        echo "Health check response: $RESPONSE"
+        echo "✓ Application is running successfully!"
 
     - name: ZAP Baseline Scan
       uses: zaproxy/action-baseline@v0.15.0
@@ -114,3 +185,13 @@ jobs:
         target: 'http://localhost:8080'
         cmd_options: '-a'  # Auto mode - passive scan only for quick results
         allow_issue_writing: false
+
+    - name: Stop application
+      if: always()
+      run: |
+        if [ -f app.pid ]; then
+          PID=$(cat app.pid)
+          echo "Stopping application with PID $PID"
+          kill $PID || true
+          rm app.pid
+        fi
