@@ -38,7 +38,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.21  
+          go-version: 1.24
 
 
       - name: Clean Go cache
@@ -100,7 +100,21 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.21
+          go-version: 1.24
+
+      - name: Verify Go version matches go.mod
+        run: |
+          GO_MOD_VERSION=$(grep '^go ' go.mod | awk '{print $2}')
+          GO_INSTALLED_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
+          GO_INSTALLED_MAJOR_MINOR=$(echo $GO_INSTALLED_VERSION | cut -d. -f1,2)
+          echo "go.mod requires: $GO_MOD_VERSION"
+          echo "Installed version: $GO_INSTALLED_VERSION"
+          echo "Installed major.minor: $GO_INSTALLED_MAJOR_MINOR"
+          if [[ "$GO_INSTALLED_MAJOR_MINOR" != "$GO_MOD_VERSION" ]]; then
+            echo "ERROR: Go version mismatch! Workflow uses $GO_INSTALLED_VERSION but go.mod requires $GO_MOD_VERSION"
+            exit 1
+          fi
+          echo "✓ Go version compatible"
 
       - name: Clean Go cache
         run: |
@@ -130,6 +144,20 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 1.24
+      
+      - name: Verify Go version matches go.mod
+        run: |
+          GO_MOD_VERSION=$(grep '^go ' go.mod | awk '{print $2}')
+          GO_INSTALLED_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
+          GO_INSTALLED_MAJOR_MINOR=$(echo $GO_INSTALLED_VERSION | cut -d. -f1,2)
+          echo "go.mod requires: $GO_MOD_VERSION"
+          echo "Installed version: $GO_INSTALLED_VERSION"
+          echo "Installed major.minor: $GO_INSTALLED_MAJOR_MINOR"
+          if [[ "$GO_INSTALLED_MAJOR_MINOR" != "$GO_MOD_VERSION" ]]; then
+            echo "ERROR: Go version mismatch! Workflow uses $GO_INSTALLED_VERSION but go.mod requires $GO_MOD_VERSION"
+            exit 1
+          fi
+          echo "✓ Go version compatible"
       
       - name: Install GCC (needed for CGO/SQLite)
         run: sudo apt-get update && sudo apt-get install -y gcc
