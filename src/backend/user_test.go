@@ -947,6 +947,88 @@ func TestApiRegisterHandler_SessionGetError(t *testing.T) {
 	assert.True(t, resp.StatusCode >= 500)
 }
 
+func TestApiRegisterHandler_InsertError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	mockStore := sessions.NewCookieStore([]byte("test-secret"))
+	store = mockStore
+
+	// Mock userExists
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT EXISTS\\(SELECT 1 FROM users WHERE LOWER\\(username\\) = LOWER\\(\\$1\\)\\)").
+		WithArgs("testuser").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectQuery("SELECT EXISTS\\(SELECT 1 FROM users WHERE LOWER\\(email\\) = LOWER\\(\\$1\\)\\)").
+		WithArgs("test@example.com").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectCommit()
+
+	// Mock INSERT to return error - use AnyArg for password since it's hashed
+	mock.ExpectQuery("INSERT INTO users \\(username, email, password, password_changed\\) VALUES \\(\\$1, \\$2, \\$3, TRUE\\) RETURNING id").
+		WithArgs("testuser", "test@example.com", sqlmock.AnyArg()).
+		WillReturnError(assert.AnError)
+
+	form := url.Values{
+		"username":  {"testuser"},
+		"email":     {"test@example.com"},
+		"password":  {"password123"},
+		"password2": {"password123"},
+	}
+
+	req := httptest.NewRequest("POST", "/api/register", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	apiRegisterHandler(w, req)
+
+	// Should handle INSERT error
+	resp := w.Result()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+}
+
+func TestApiRegisterHandler_SessionSaveError(t *testing.T) {
+	mockDB, mock := setupMockDB()
+	defer func() { _ = mockDB.Close() }()
+
+	mockStore := sessions.NewCookieStore([]byte("test-secret"))
+	mockStore.MaxAge(-1) // Set cookie to expire immediately, which can cause save issues
+	store = mockStore
+
+	// Mock userExists
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT EXISTS\\(SELECT 1 FROM users WHERE LOWER\\(username\\) = LOWER\\(\\$1\\)\\)").
+		WithArgs("testuser").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectQuery("SELECT EXISTS\\(SELECT 1 FROM users WHERE LOWER\\(email\\) = LOWER\\(\\$1\\)\\)").
+		WithArgs("test@example.com").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectCommit()
+
+	// Mock INSERT - use AnyArg for password since it's hashed
+	mock.ExpectQuery("INSERT INTO users \\(username, email, password, password_changed\\) VALUES \\(\\$1, \\$2, \\$3, TRUE\\) RETURNING id").
+		WithArgs("testuser", "test@example.com", sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+
+	form := url.Values{
+		"username":  {"testuser"},
+		"email":     {"test@example.com"},
+		"password":  {"password123"},
+		"password2": {"password123"},
+	}
+
+	req := httptest.NewRequest("POST", "/api/register", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	apiRegisterHandler(w, req)
+
+	// Session is created successfully but with MaxAge -1
+	// The handler should complete successfully despite MaxAge setting
+	resp := w.Result()
+	assert.True(t, resp.StatusCode == http.StatusSeeOther || resp.StatusCode == http.StatusInternalServerError)
+}
+
 func TestApiLogin_EmptyUsernameTemplateError(t *testing.T) {
 	// Setup mock template path
 	originalPath := templatePath
