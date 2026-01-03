@@ -1,7 +1,8 @@
-// +build integration
-
 // Integration tests for Elasticsearch initialization
-// Run with: go test -tags=integration ./src/backend/...
+// These tests require real Elasticsearch server running locally.
+// Run with: go test -run TestInitElasticsearch_Integration ./src/backend/
+//
+//nolint:errcheck // Test cleanup errors are not critical
 package main
 
 import (
