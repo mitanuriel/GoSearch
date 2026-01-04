@@ -1,7 +1,7 @@
 apiVersion: 1
 
 datasources:
-  - name: Prometheus
+  - name: Prometheus (Local)
     type: prometheus
     access: proxy
     url: http://prometheus:9090
@@ -9,3 +9,14 @@ datasources:
     editable: false
     jsonData:
       timeInterval: 5s
+
+  - name: Prometheus (Production)
+    type: prometheus
+    access: proxy
+    url: http://gosearch1.dk:9090
+    isDefault: false
+    editable: true
+    jsonData:
+      timeInterval: 5s
+      httpMethod: GET
+    secureJsonData: {}
