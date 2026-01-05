@@ -66,7 +66,7 @@ jobs:
         
         - name: Transfer Docker-Compose to server
           run: |
-            scp -i ~/.ssh/ssh_key ./docker-compose.dev.yml $SSH_USER@$SSH_HOST:~/GoSearch/
+            scp -i ~/.ssh/ssh_key ./docker-compose.yml $SSH_USER@$SSH_HOST:~/GoSearch/
 
         - name: Check docker installation
           run: |
@@ -114,9 +114,9 @@ jobs:
             ssh -i ~/.ssh/ssh_key $SSH_USER@$SSH_HOST << 'EOF'
             mkdir -p ~/GoSearch
             cd ~/GoSearch
-            docker-compose -f docker-compose.dev.yml down || true
-            docker-compose -f docker-compose.dev.yml pull
-            docker-compose -f docker-compose.dev.yml up -d --force-recreate
+            docker-compose down || true
+            docker-compose pull
+            docker-compose up -d --force-recreate
             EOF
 
         - name: Clean up Docker resources
