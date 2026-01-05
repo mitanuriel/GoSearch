@@ -86,6 +86,14 @@ var (
 		},
 		[]string{"auth_status"},
 	)
+
+	weatherAPIRequests = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "weather_api_requests_total",
+			Help: "Total number of weather API requests by city and status",
+		},
+		[]string{"city", "status"},
+	)
 )
 
 type statusRecorder struct {
@@ -168,6 +176,10 @@ func certificateMonitoring() {
 	}
 }
 
+// checkCertificate checks the TLS certificate for the given domain and updates Prometheus metrics.
+// It computes days until the certificate's NotAfter and sets the `certExpiryDays` metric with that value,
+// and sets `certValidity` to 1.0 if the certificate is currently valid for the domain and 0.0 otherwise.
+// Validation, hostname verification, and connectivity issues are logged but not returned.
 func checkCertificate(domain string) {
 	config := &tls.Config{
 		InsecureSkipVerify: false,
@@ -179,13 +191,13 @@ func checkCertificate(domain string) {
 	certValid := 0.0
 	daysUntilExpiry := 0.0
 
-if err != nil {
-	log.Printf("Certificate validation failed for %s: %v", domain, err)
+	if err != nil {
+		log.Printf("Certificate validation failed for %s: %v", domain, err)
 
-} else {
-	defer func() { _ = conn.Close() }()
+	} else {
+		defer func() { _ = conn.Close() }()
 
-	if len(conn.ConnectionState().PeerCertificates) > 0 {
+		if len(conn.ConnectionState().PeerCertificates) > 0 {
 			cert := conn.ConnectionState().PeerCertificates[0]
 
 			daysUntilExpiry = time.Until(cert.NotAfter).Hours() / 24

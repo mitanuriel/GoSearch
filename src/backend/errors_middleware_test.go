@@ -157,7 +157,7 @@ func TestRecoveryMiddleware_NoPanic(t *testing.T) {
 // TestRecoveryMiddleware_WithPanic tests that the middleware catches panics
 func TestRecoveryMiddleware_WithPanic(t *testing.T) {
 	skipIfCI(t)
-	
+
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		panic("test panic!")
 	})
@@ -186,7 +186,7 @@ func TestRecoveryMiddleware_WithPanic(t *testing.T) {
 // TestRecoveryMiddleware_WithDifferentPanicTypes tests recovery with different panic types
 func TestRecoveryMiddleware_WithDifferentPanicTypes(t *testing.T) {
 	skipIfCI(t)
-	
+
 	testCases := []struct {
 		name       string
 		panicValue interface{}

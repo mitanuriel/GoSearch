@@ -165,4 +165,3 @@ func TestSmoke_404Endpoint(t *testing.T) {
 		t.Fatalf("Expected 404 Not Found for nonexistent endpoint, got %d", resp.StatusCode)
 	}
 }
-

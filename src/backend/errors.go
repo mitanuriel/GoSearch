@@ -86,11 +86,12 @@ func handleError(w http.ResponseWriter, r *http.Request, err error, statusCode i
 </html>`, userMessage)
 }
 
-// handleInternalError is a helper for 500 errors
+// handleInternalError logs additional server-side context for an internal error
+// and responds to the client with a generic HTTP 500 error page.
 func handleInternalError(w http.ResponseWriter, r *http.Request, err error, context string) {
 	// Additional server-side logging with context
 	log.Printf("[INTERNAL ERROR] Context: %s - Error: %v", context, err)
-	
+
 	handleError(w, r, err, http.StatusInternalServerError,
 		"An unexpected error occurred. Please try again later.")
 }
