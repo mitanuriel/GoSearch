@@ -92,4 +92,3 @@ func TestSyncPagesToElasticsearch_ValidRowScan(t *testing.T) {
 	assert.True(t, hasRows, "Should have processed at least one row")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
-

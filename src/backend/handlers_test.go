@@ -21,7 +21,7 @@ func TestRootHandler(t *testing.T) {
 	resp := w.Result()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Contains(t, resp.Header.Get("Content-Type"), "text/html")
-	
+
 	// Check that the response body is not empty
 	assert.Greater(t, w.Body.Len(), 0)
 }
@@ -38,7 +38,7 @@ func TestAboutHandler(t *testing.T) {
 	resp := w.Result()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Contains(t, resp.Header.Get("Content-Type"), "text/html")
-	
+
 	// Check that the response body is not empty
 	assert.Greater(t, w.Body.Len(), 0)
 }

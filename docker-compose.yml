@@ -8,6 +8,7 @@ services:
     container_name: go-app
     volumes:
       - ./src/whoknows.db:/app/src/whoknows.db
+      - ./backups:/app/src/backend/backups
     ports:
       - "8080:8080"
     environment:
@@ -56,8 +57,14 @@ services:
       discovery.type: single-node
       ELASTIC_PASSWORD: ${ES_PASSWORD}
       ES_JAVA_OPTS: "-Xms128m -Xmx128m"
-      # WARNING: Security disabled for development/testing only
-      # In production, enable X-Pack security with proper TLS and authentication
+      # Security configuration:
+      # X-Pack security is disabled because Elasticsearch is NOT exposed to the internet.
+      # Port 9200 is blocked by Azure Network Security Group (NSG) firewall.
+      # Elasticsearch is only accessible via Docker internal network from the Go application.
+      # This follows defense-in-depth security: application-level firewall (NSG) protects
+      # the service even though authentication is disabled at the Elasticsearch level.
+      # For multi-host or cloud-native deployments, enable X-Pack security with:
+      #   xpack.security.enabled: "true" and configure ELASTIC_PASSWORD authentication.
       xpack.security.enabled: "false"
       xpack.security.http.ssl.enabled: "false"
       # Performance tuning for resource-constrained environments

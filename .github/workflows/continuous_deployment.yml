@@ -66,7 +66,7 @@ jobs:
         
         - name: Transfer Docker-Compose to server
           run: |
-            scp -i ~/.ssh/ssh_key ./docker-compose.dev.yml $SSH_USER@$SSH_HOST:~/GoSearch/
+            scp -i ~/.ssh/ssh_key ./docker-compose.yml $SSH_USER@$SSH_HOST:~/GoSearch/
 
         - name: Check docker installation
           run: |
@@ -111,12 +111,18 @@ jobs:
 
         - name: Deploy to server
           run: |
+            # NOTE: This workflow requires a .env file to be manually created on the
+            # production server at ~/GoSearch/.env with all required environment variables.
+            # The .env file is NOT transferred via CI/CD for security reasons (secrets should
+            # never be committed to Git or transferred over the network during deployment).
+            # Docker Compose automatically reads the .env file from the current directory.
+            # See .env.example in the repository for required variables.
             ssh -i ~/.ssh/ssh_key $SSH_USER@$SSH_HOST << 'EOF'
             mkdir -p ~/GoSearch
             cd ~/GoSearch
-            docker-compose -f docker-compose.dev.yml down || true
-            docker-compose -f docker-compose.dev.yml pull
-            docker-compose -f docker-compose.dev.yml up -d --force-recreate
+            docker-compose down || true
+            docker-compose pull
+            docker-compose up -d --force-recreate
             EOF
 
         - name: Clean up Docker resources

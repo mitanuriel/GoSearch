@@ -45,6 +45,7 @@ coverage-js/
 
 #backup
 /src/backend/backups/
+/backups/
 
 VM-Gosearch_key.pem
 gosearch
