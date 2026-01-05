@@ -6,7 +6,7 @@ require github.com/gorilla/mux v1.8.1
 
 require (
 	filippo.io/csrf v0.2.1
-	github.com/elastic/go-elasticsearch/v8 v8.18.0
+	github.com/elastic/go-elasticsearch/v8 v8.19.1
 	github.com/gocolly/colly v1.2.0
 	github.com/gorilla/sessions v1.4.0
 	github.com/lib/pq v1.10.9
@@ -18,7 +18,7 @@ require (
 )
 
 require (
-	github.com/elastic/elastic-transport-go/v8 v8.7.0 // indirect
+	github.com/elastic/elastic-transport-go/v8 v8.8.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/joho/godotenv v1.5.1
