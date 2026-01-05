@@ -618,4 +618,3 @@ func TestStartScraping_ScrapeError(t *testing.T) {
 	assert.NoError(t, err)
 	t.Log("Successfully handled scrape error without saving or marking")
 }
-

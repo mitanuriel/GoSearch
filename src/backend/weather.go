@@ -57,6 +57,8 @@ func weatherHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Weather API error: %v", err)
 		message = fmt.Sprintf("Could not fetch weather data for %s. Please check the city name or try again later.", city)
 		displayCity = city
+		// Track failed request
+		weatherAPIRequests.WithLabelValues(city, "error").Inc()
 	} else {
 		// Format temperature and description
 		temp := fmt.Sprintf("%.1f°C", weatherData.Main.Temp)
@@ -66,6 +68,8 @@ func weatherHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		message = fmt.Sprintf("Temperature: %s, Conditions: %s", temp, description)
 		displayCity = weatherData.Name
+		// Track successful request with actual city name from API
+		weatherAPIRequests.WithLabelValues(displayCity, "success").Inc()
 	}
 
 	data := struct {

@@ -1141,5 +1141,3 @@ func TestApiLogin_SessionSaveTemplateError(t *testing.T) {
 	// Either succeeds or returns 500 error - both are acceptable
 	assert.True(t, resp.StatusCode == http.StatusSeeOther || resp.StatusCode == http.StatusInternalServerError)
 }
-
-

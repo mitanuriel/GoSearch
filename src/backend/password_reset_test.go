@@ -1029,4 +1029,3 @@ func TestPasswordResetMiddleware_SessionError(t *testing.T) {
 	// Should call next handler even when session error occurs
 	assert.True(t, nextCalled)
 }
-

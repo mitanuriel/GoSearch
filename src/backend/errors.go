@@ -90,7 +90,7 @@ func handleError(w http.ResponseWriter, r *http.Request, err error, statusCode i
 func handleInternalError(w http.ResponseWriter, r *http.Request, err error, context string) {
 	// Additional server-side logging with context
 	log.Printf("[INTERNAL ERROR] Context: %s - Error: %v", context, err)
-	
+
 	handleError(w, r, err, http.StatusInternalServerError,
 		"An unexpected error occurred. Please try again later.")
 }
