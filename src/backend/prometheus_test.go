@@ -28,7 +28,7 @@ func TestIncrementNewUserCounter(t *testing.T) {
 	// We can't easily check specific label values with testutil, but we can verify the counter exists
 	count := testutil.CollectAndCount(newUserCounter)
 	assert.Greater(t, count, 0, "Counter should have at least one metric")
-	
+
 	// Call again to verify it increments
 	incrementNewUserCounter()
 	count2 := testutil.CollectAndCount(newUserCounter)
@@ -40,7 +40,7 @@ func TestIncrementNewUserCounter(t *testing.T) {
 func TestStatusRecorder_WriteHeader(t *testing.T) {
 	// Create a test response writer
 	w := httptest.NewRecorder()
-	
+
 	// Create status recorder
 	recorder := &statusRecorder{
 		ResponseWriter: w,
@@ -103,7 +103,7 @@ func TestMetricsMiddleware_RecordsMetrics(t *testing.T) {
 	// Verify metrics were recorded
 	totalCount := testutil.CollectAndCount(httpRequestsTotal)
 	durationCount := testutil.CollectAndCount(httpRequestDuration)
-	
+
 	assert.Greater(t, totalCount, 0, "httpRequestsTotal should have metrics")
 	assert.Greater(t, durationCount, 0, "httpRequestDuration should have metrics")
 }
@@ -139,7 +139,7 @@ func TestMetricsMiddleware_WithAuthenticatedUser(t *testing.T) {
 
 func TestMetricsMiddleware_TracksStatusCodes(t *testing.T) {
 	httpRequestsTotal.Reset()
-	
+
 	mockStore := sessions.NewCookieStore([]byte("test-secret"))
 	store = mockStore
 
@@ -172,7 +172,7 @@ func TestMetricsMiddleware_TracksStatusCodes(t *testing.T) {
 
 func TestMetricsMiddleware_MeasuresDuration(t *testing.T) {
 	httpRequestDuration.Reset()
-	
+
 	mockStore := sessions.NewCookieStore([]byte("test-secret"))
 	store = mockStore
 
@@ -192,7 +192,7 @@ func TestMetricsMiddleware_MeasuresDuration(t *testing.T) {
 
 	// Request should have taken at least 10ms
 	assert.GreaterOrEqual(t, elapsed.Milliseconds(), int64(10), "Request should take at least 10ms")
-	
+
 	// Verify duration was recorded
 	count := testutil.CollectAndCount(httpRequestDuration)
 	assert.Greater(t, count, 0, "Duration should be recorded")
@@ -202,7 +202,7 @@ func init() {
 	// Ensure Prometheus metrics are registered only once
 	// This prevents "duplicate metrics collector registration attempted" errors
 	prometheus.DefaultRegisterer = prometheus.NewRegistry()
-	
+
 	// Re-register our metrics
 	prometheus.MustRegister(httpRequestsTotal)
 	prometheus.MustRegister(httpRequestDuration)
