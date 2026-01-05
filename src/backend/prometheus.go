@@ -176,6 +176,10 @@ func certificateMonitoring() {
 	}
 }
 
+// checkCertificate checks the TLS certificate for the given domain and updates Prometheus metrics.
+// It computes days until the certificate's NotAfter and sets the `certExpiryDays` metric with that value,
+// and sets `certValidity` to 1.0 if the certificate is currently valid for the domain and 0.0 otherwise.
+// Validation, hostname verification, and connectivity issues are logged but not returned.
 func checkCertificate(domain string) {
 	config := &tls.Config{
 		InsecureSkipVerify: false,

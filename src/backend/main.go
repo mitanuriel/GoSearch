@@ -12,6 +12,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// main initializes application services, configures HTTP routes and middleware, and starts the web server.
+//
+// It performs startup tasks including database initialization and readiness checks, password-reset table
+// setup, Elasticsearch initialization and page synchronization, search log setup, table checks and cron
+// scheduler startup, and optional scraping. It configures monitoring and metrics, registers routes and
+// middleware (security headers, recovery, password reset, CSRF protection, and metrics), serves static
+// files, exposes a health check and Prometheus metrics endpoint, and listens on :8080.
 func main() {
 
 	log.Printf("CONN_STR: %s", CONN_STR)

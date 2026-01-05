@@ -176,7 +176,9 @@ func startCronScheduler() {
 	c.Start()
 }
 
-// parseConnectionString extracts database connection parameters from connection string
+// parseConnectionString parses a PostgreSQL connection string in either URL form
+// (postgres://user:pass@host:port/dbname) or key=value form (host=... port=... user=... password=... dbname=...).
+// It returns host, port (defaults to "5432" when missing), user, password, dbname, and a non-nil error if host or dbname are missing or the string is invalid.
 func parseConnectionString(connStr string) (host, port, user, password, dbname string, err error) {
 	// Try parsing the URL format first
 	if connURL, parseErr := url.Parse(connStr); parseErr == nil && connURL.Scheme == "postgres" {
