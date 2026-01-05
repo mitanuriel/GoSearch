@@ -32,12 +32,16 @@ services:
     image: postgres:13
     container_name: postgres-db
     restart: always
+    command: 
+      - "postgres"
+      - "-c"
+      - "shared_buffers=64MB"
+      - "-c"
+      - "work_mem=4MB"
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
-      POSTGRES_SHARED_BUFFERS: 64MB
-      POSTGRES_WORK_MEM: 4MB
     ports:
       - "5432:5432"
     volumes:
@@ -51,8 +55,11 @@ services:
       discovery.type: single-node
       ELASTIC_PASSWORD: ${ES_PASSWORD}
       ES_JAVA_OPTS: "-Xms128m -Xmx128m"
+      # WARNING: Security disabled for development/testing only
+      # In production, enable X-Pack security with proper TLS and authentication
       xpack.security.enabled: "false"
       xpack.security.http.ssl.enabled: "false"
+      # Performance tuning for resource-constrained environments
       indices.memory.index_buffer_size: "5%"
       indices.queries.cache.size: "3%"
       indices.fielddata.cache.size: "3%"
@@ -94,8 +101,8 @@ services:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD:-admin}
-      - GF_USERS_ALLOWS_SIGNUP=false
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
     depends_on:
       - prometheus
     restart: unless-stopped
