@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 )
 
 // fetchWeatherData calls OpenWeatherMap API to get real weather data
@@ -37,6 +38,11 @@ func fetchWeatherData(city string) (*WeatherResponse, error) {
 	return &weatherData, nil
 }
 
+// normalizeCity normalizes city names to lowercase to reduce metric cardinality
+func normalizeCity(city string) string {
+	return strings.ToLower(strings.TrimSpace(city))
+}
+
 func weatherHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session-name")
 	userID, ok := session.Values["user_id"]
@@ -57,8 +63,8 @@ func weatherHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Weather API error: %v", err)
 		message = fmt.Sprintf("Could not fetch weather data for %s. Please check the city name or try again later.", city)
 		displayCity = city
-		// Track failed request
-		weatherAPIRequests.WithLabelValues(city, "error").Inc()
+		// Track failed request with normalized city name to reduce cardinality
+		weatherAPIRequests.WithLabelValues(normalizeCity(city), "error").Inc()
 	} else {
 		// Format temperature and description
 		temp := fmt.Sprintf("%.1f°C", weatherData.Main.Temp)
@@ -68,8 +74,8 @@ func weatherHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		message = fmt.Sprintf("Temperature: %s, Conditions: %s", temp, description)
 		displayCity = weatherData.Name
-		// Track successful request with actual city name from API
-		weatherAPIRequests.WithLabelValues(displayCity, "success").Inc()
+		// Track successful request with normalized API-returned city name
+		weatherAPIRequests.WithLabelValues(normalizeCity(displayCity), "success").Inc()
 	}
 
 	data := struct {
