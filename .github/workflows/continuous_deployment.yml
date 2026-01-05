@@ -111,6 +111,12 @@ jobs:
 
         - name: Deploy to server
           run: |
+            # NOTE: This workflow requires a .env file to be manually created on the
+            # production server at ~/GoSearch/.env with all required environment variables.
+            # The .env file is NOT transferred via CI/CD for security reasons (secrets should
+            # never be committed to Git or transferred over the network during deployment).
+            # Docker Compose automatically reads the .env file from the current directory.
+            # See .env.example in the repository for required variables.
             ssh -i ~/.ssh/ssh_key $SSH_USER@$SSH_HOST << 'EOF'
             mkdir -p ~/GoSearch
             cd ~/GoSearch

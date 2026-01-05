@@ -56,8 +56,11 @@ services:
       discovery.type: single-node
       ELASTIC_PASSWORD: ${ES_PASSWORD}
       ES_JAVA_OPTS: "-Xms128m -Xmx128m"
-      # WARNING: Security disabled for development/testing only
-      # In production, enable X-Pack security with proper TLS and authentication
+      # Security configuration:
+      # X-Pack security is disabled for development/testing environments.
+      # In development, Elasticsearch is only accessible via Docker internal network.
+      # For production deployment, this compose file should NOT be used - use docker-compose.yml
+      # which includes additional security documentation about Azure NSG firewall protection.
       xpack.security.enabled: "false"
       xpack.security.http.ssl.enabled: "false"
       # Performance tuning for resource-constrained environments
