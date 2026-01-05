@@ -12,7 +12,8 @@ import (
 )
 
 // setupRouter creates an HTTP router for testing
-// Used by integration and smoke tests
+// setupRouter builds and returns an HTTP router configured with the application's page routes, API endpoints, static file serving, and a Prometheus metrics endpoint for use in integration and smoke tests.
+// If the Elasticsearch client is nil, it initializes the client before constructing and returning the router.
 func setupRouter() http.Handler {
 	if esClient == nil {
 		initElasticsearch()

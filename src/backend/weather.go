@@ -37,6 +37,14 @@ func fetchWeatherData(city string) (*WeatherResponse, error) {
 	return &weatherData, nil
 }
 
+// weatherHandler handles HTTP requests for the weather page by fetching current weather for a requested city
+// (defaults to "Copenhagen"), preparing a user-facing message, and rendering the weather template.
+//
+// It reads the session to determine whether a user is logged in, calls fetchWeatherData to obtain weather
+// information, and sets the displayed city and message based on the API result. On API error it records a
+// failed request metric with the requested city and displays an error message; on success it formats the
+// temperature and conditions, records a successful request metric with the API-provided city name, and
+// displays the returned city. Template loading or rendering errors are handled via handleInternalError.
 func weatherHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session-name")
 	userID, ok := session.Values["user_id"]
