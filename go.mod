@@ -8,9 +8,10 @@ require (
 	filippo.io/csrf v0.2.1
 	github.com/elastic/go-elasticsearch/v8 v8.18.0
 	github.com/gocolly/colly v1.2.0
+	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/sessions v1.4.0
 	github.com/lib/pq v1.10.9
-	github.com/mattn/go-sqlite3 v1.14.28
+	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/prometheus/client_golang v1.22.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	golang.org/x/crypto v0.46.0
